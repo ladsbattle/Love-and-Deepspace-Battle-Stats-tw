@@ -1,0 +1,2344 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>面板資料庫｜戀與深空戰鬥討論群</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600&family=Noto+Sans+TC:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #060b18;
+  --bg2: #0d1526;
+  --bg3: #111e35;
+  --card: #0f1a2e;
+  --card-hover: #162340;
+  --border: rgba(150,180,240,0.2);
+  --border-bright: rgba(180,210,255,0.45);
+  --accent: #b8d4ff;
+  --accent2: #c8b4ff;
+  --gold: #ffd166;
+  --text: #f0f6ff;
+  --text-muted: #b0c8e8;
+  --text-dim: #6a88b0;
+
+  /* per-orbit colours (chip bg / card top bar / badge) */
+  --col-open:   #d4d4d4; --col-open-bg:   rgba(212,212,212,0.13); --col-open-border:   rgba(212,212,212,0.4);
+  --col-light:  #c9b8ff; --col-light-bg:  rgba(201,184,255,0.13); --col-light-border:  rgba(201,184,255,0.4);
+  --col-ice:    #93d4ff; --col-ice-bg:    rgba(147,212,255,0.13); --col-ice-border:    rgba(147,212,255,0.4);
+  --col-fire:   #ffb3c1; --col-fire-bg:   rgba(255,179,193,0.13); --col-fire-border:   rgba(255,179,193,0.4);
+  --col-energy: #ff9999; --col-energy-bg: rgba(255,153,153,0.13); --col-energy-border: rgba(255,153,153,0.4);
+  --col-gravity:#ffb47a; --col-gravity-bg:rgba(255,207,145,0.13); --col-gravity-border:rgba(255,207,145,0.4);
+  --col-wave:   #ffe07a; --col-wave-bg:   rgba(232,200,74,0.13);   --col-wave-border:   rgba(232,200,74,0.4);
+  --col-metal:  #0e94a8; --col-metal-bg:  rgba(14,148,168,0.16);   --col-metal-border:  rgba(14,148,168,0.45);
+}
+
+.site-footer {
+  text-align: center;
+  font-size: 13px;
+  color: #888;
+  padding: 24px 12px 16px;
+  margin-top: 40px;
+  line-height: 2.2;
+}
+
+.site-footer a {
+  color: #aaa;
+  text-decoration: none;
+  transition: opacity 0.2s ease;
+}
+
+.site-footer a:hover {
+  opacity: 0.7;
+  text-decoration: underline;
+}
+
+
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Noto Sans TC', sans-serif;
+  font-weight: 300;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Star background */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    radial-gradient(1px 1px at 10% 15%, rgba(255,255,255,0.6) 0%, transparent 100%),
+    radial-gradient(1px 1px at 30% 40%, rgba(255,255,255,0.4) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 50% 10%, rgba(255,255,255,0.5) 0%, transparent 100%),
+    radial-gradient(1px 1px at 70% 60%, rgba(255,255,255,0.3) 0%, transparent 100%),
+    radial-gradient(1px 1px at 85% 25%, rgba(255,255,255,0.5) 0%, transparent 100%),
+    radial-gradient(1px 1px at 20% 80%, rgba(255,255,255,0.3) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 60% 85%, rgba(255,255,255,0.4) 0%, transparent 100%),
+    radial-gradient(1px 1px at 90% 75%, rgba(255,255,255,0.5) 0%, transparent 100%),
+    radial-gradient(1px 1px at 5% 55%, rgba(255,255,255,0.3) 0%, transparent 100%),
+    radial-gradient(1px 1px at 45% 70%, rgba(255,255,255,0.4) 0%, transparent 100%),
+    radial-gradient(1px 1px at 75% 35%, rgba(255,255,255,0.3) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 38% 20%, rgba(255,255,255,0.5) 0%, transparent 100%),
+    radial-gradient(1px 1px at 92% 50%, rgba(255,255,255,0.4) 0%, transparent 100%),
+    radial-gradient(1px 1px at 15% 90%, rgba(255,255,255,0.3) 0%, transparent 100%),
+    radial-gradient(1px 1px at 55% 45%, rgba(255,255,255,0.35) 0%, transparent 100%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 60% 40% at 20% 0%, rgba(147,212,255,0.05) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 30% at 80% 100%, rgba(201,184,255,0.05) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Header */
+header {
+  position: relative;
+  z-index: 10;
+  text-align: center;
+  padding: 3rem 1.5rem 2rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.site-title {
+  font-family: 'Noto Serif TC', serif;
+  font-size: clamp(1.4rem, 4vw, 2rem);
+  font-weight: 600;
+  color: #f0f6ff;
+  letter-spacing: 0.15em;
+  text-shadow: 0 0 30px rgba(180,210,255,0.4);
+  margin-bottom: 0.3rem;
+}
+
+.site-sub {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  letter-spacing: 0.2em;
+}
+
+/* Main layout */
+.container {
+  position: relative;
+  z-index: 10;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2rem 1.25rem;
+}
+
+/* Filter panel */
+.filter-panel {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.filter-title {
+  font-size: 0.82rem;
+  letter-spacing: 0.25em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.filter-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.125rem;
+}
+
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.5rem;
+  align-items: flex-end;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1 1 180px;
+  min-width: 0;
+}
+
+.filter-group label {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  letter-spacing: 0.1em;
+}
+
+.orbit-group,
+.panel-filter-fields {
+  width: 100%;
+}
+.orbit-label {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  letter-spacing: 0.1em;
+  margin-bottom: 0.65rem;
+}
+.filter-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+.panel-filter-fields { margin-top: 1.25rem; }
+.endless-filter-fields {
+  margin-top: 0;
+}
+.endless-filter-fields .partner-group,
+.endless-filter-fields .video-group {
+  min-width: 0;
+}
+.endless-filter-panel .filter-group.video-group {
+  flex: 0 1 170px;
+}
+
+/* 軌道 type chips — 開放（2欄）與定向（3欄x2列）分組，固定網格避免跑版 */
+.orbit-chips {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 0.5rem;
+  width: 100%;
+}
+.orbit-row-open {
+  display: contents;
+}
+.orbit-divider {
+  display: none;
+}
+.orbit-grid-directional {
+  display: contents;
+}
+.orbit-chips .chip {
+  width: 100%;
+  text-align: center;
+  box-sizing: border-box;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chip {
+  padding: 0.56rem 0.4rem;
+  border-radius: 10px;
+  border: 1px solid rgba(150,180,240,0.22);
+  background: rgba(255,255,255,0.03);
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-family: 'Noto Sans TC', sans-serif;
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 0.05em;
+}
+.chip:hover { border-color: var(--border-bright); color: var(--text); }
+.chip[data-orbit="開放"].active { background: var(--col-open-bg);   border-color: var(--col-open-border);   color: var(--col-open); }
+.chip[data-orbit="光"].active   { background: var(--col-light-bg);  border-color: var(--col-light-border);  color: var(--col-light); }
+.chip[data-orbit="冰"].active   { background: var(--col-ice-bg);    border-color: var(--col-ice-border);    color: var(--col-ice); }
+.chip[data-orbit="火"].active   { background: var(--col-fire-bg);   border-color: var(--col-fire-border);   color: var(--col-fire); }
+.chip[data-orbit="能量"].active { background: var(--col-energy-bg); border-color: var(--col-energy-border); color: var(--col-energy); }
+.chip[data-orbit="引力"].active { background: var(--col-gravity-bg);border-color: var(--col-gravity-border);color: var(--col-gravity); }
+.chip[data-orbit="波動"].active { background: var(--col-wave-bg);   border-color: var(--col-wave-border);   color: var(--col-wave); }
+.chip[data-orbit="金屬"].active { background: var(--col-metal-bg);  border-color: var(--col-metal-border);  color: var(--col-metal); }
+
+/* Layer single input */
+.layer-input {
+  width: 100%;
+  height: 2.375rem;
+  box-sizing: border-box;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.52rem 0.75rem;
+  color: var(--text);
+  font-size: 0.8rem;
+  font-family: 'Noto Sans TC', sans-serif;
+  text-align: center;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.layer-input:focus { border-color: var(--accent); }
+.layer-input::placeholder { color: var(--text-dim); }
+.layer-input.error-input { border-color: #f87171; }
+.layer-error-msg {
+  display: none;
+  font-size: 0.68rem;
+  color: #f87171;
+  margin-top: 0.3rem;
+  line-height: 1.5;
+  max-width: 200px;
+}
+.layer-error-msg.show { display: block; }
+
+/* hide number input spinners */
+.layer-input::-webkit-outer-spin-button,
+.layer-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.layer-input { -moz-appearance: textfield; }
+
+/* Card selector input */
+.card-input {
+  height: 2.375rem;
+  box-sizing: border-box;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.52rem 0.75rem;
+  color: var(--text);
+  font-size: 0.8rem;
+  font-family: 'Noto Sans TC', sans-serif;
+  outline: none;
+  width: 100%;
+  transition: border-color 0.2s;
+}
+.card-input:focus { border-color: var(--accent); }
+.card-input::placeholder { color: var(--text-dim); }
+
+/* Reset btn */
+.btn-reset {
+  flex: 0 0 auto;
+  padding: 0.4rem 1rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-family: 'Noto Sans TC', sans-serif;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  align-self: flex-end;
+  min-height: 2rem;
+}
+.btn-reset:hover { border-color: var(--border-bright); color: var(--text); }
+
+.btn-reset-compact {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 0;
+  padding: 0.32rem 0.8rem;
+  border-radius: 999px;
+  align-self: auto;
+  font-size: 0.75rem;
+}
+.btn-reset-compact svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+
+.video-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.5rem;
+  height: 2.375rem;
+  box-sizing: border-box;
+  padding: 0.52rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg3);
+  color: var(--text);
+  font-size: 0.75rem;
+  font-family: 'Noto Sans TC', sans-serif;
+  letter-spacing: 0;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.video-toggle:hover { border-color: var(--border-bright); color: var(--text); }
+.video-toggle input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.video-switch {
+  width: 30px;
+  height: 17px;
+  border-radius: 999px;
+  background: rgba(184,212,255,0.25);
+  position: relative;
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+.video-switch::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--accent);
+  transition: transform 0.2s;
+}
+.video-toggle:has(input:checked) .video-switch {
+  background: rgba(184,212,255,0.38);
+}
+.video-toggle:has(input:checked) .video-switch::before {
+  transform: translateX(13px);
+}
+.video-toggle:has(input:checked) {
+  border-color: var(--border);
+  background: var(--bg3);
+  color: var(--text);
+}
+
+.dynamic-filter-panel {
+  display: none;
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+.dynamic-filter-panel.show { display: block; }
+.dynamic-filter-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.85rem;
+}
+.dynamic-filter-title {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  letter-spacing: 0.25em;
+}
+.dynamic-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+.dynamic-filter-grid.single-column {
+  grid-template-columns: 1fr;
+}
+.dynamic-layer-box {
+  background: rgba(255,255,255,0.025);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 8px;
+  padding: 0.85rem;
+}
+.dynamic-layer-title {
+  font-size: 0.68rem;
+  color: var(--text-dim);
+  letter-spacing: 0.12em;
+  margin-bottom: 0.65rem;
+}
+.dynamic-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+.dynamic-chip {
+  padding: 0.28rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 0.72rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.dynamic-chip:hover {
+  border-color: var(--border-bright);
+  color: var(--text);
+}
+.dynamic-chip.active {
+  border-color: var(--accent);
+  background: rgba(184,212,255,0.22);
+  color: #ffffff;
+  box-shadow: 0 0 0 1px rgba(184,212,255,0.18), 0 0 14px rgba(184,212,255,0.16);
+  font-weight: 500;
+}
+.dynamic-empty {
+  color: var(--text-dim);
+  font-size: 0.72rem;
+}
+.dynamic-no-match {
+  display: none;
+  margin-top: 0.8rem;
+  color: #f8caca;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+}
+.dynamic-no-match.show { display: block; }
+
+/* Results info */
+.results-info {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-bottom: 1.25rem;
+  letter-spacing: 0.05em;
+}
+.results-info span { color: var(--accent); }
+.loading-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--text-muted);
+}
+.loading-spinner {
+  width: 0.82rem;
+  height: 0.82rem;
+  border-radius: 50%;
+  border: 1.5px solid rgba(184,212,255,0.22);
+  border-top-color: var(--accent);
+  animation: loadingSpin 0.85s linear infinite;
+}
+.loading-text {
+  animation: loadingBreath 1.6s ease-in-out infinite;
+}
+@keyframes loadingSpin {
+  to { transform: rotate(360deg); }
+}
+@keyframes loadingBreath {
+  0%, 100% { opacity: 0.58; }
+  50% { opacity: 1; }
+}
+
+/* Cards grid */
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+  gap: 1rem;
+}
+
+/* Card */
+.panel-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem 1.1rem;
+  cursor: pointer;
+  transition: all 0.25s;
+  position: relative;
+  overflow: hidden;
+}
+.panel-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  opacity: 0;
+  transition: opacity 0.25s;
+}
+.panel-card:hover { background: var(--card-hover); border-color: var(--border-bright); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+.panel-card:hover::before { opacity: 1; }
+
+.card-labels,
+.card-meta-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.card-orbit-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+.card-labels {
+  min-width: 0;
+  flex-wrap: wrap;
+}
+.card-meta-right { flex-shrink: 0; }
+
+/* orbit-specific top bars */
+.panel-card[data-orbit="開放"]::before  { background: var(--col-open); }
+.panel-card[data-orbit="光"]::before    { background: var(--col-light); }
+.panel-card[data-orbit="冰"]::before    { background: var(--col-ice); }
+.panel-card[data-orbit="火"]::before    { background: var(--col-fire); }
+.panel-card[data-orbit="能量"]::before  { background: var(--col-energy); }
+.panel-card[data-orbit="引力"]::before  { background: var(--col-gravity); }
+.panel-card[data-orbit="波動"]::before  { background: var(--col-wave); }
+.panel-card[data-orbit="金屬"]::before  { background: var(--col-metal); }
+
+/* orbit badges on card */
+.orbit-badge { font-size: 0.65rem; letter-spacing: 0.1em; padding: 0.18rem 0.6rem; border-radius: 999px; border: 1px solid; font-weight: 500; }
+.orbit-badge[data-orbit="開放"]  { color: var(--col-open);   border-color: var(--col-open-border);   background: var(--col-open-bg); }
+.orbit-badge[data-orbit="光"]    { color: var(--col-light);  border-color: var(--col-light-border);  background: var(--col-light-bg); }
+.orbit-badge[data-orbit="冰"]    { color: var(--col-ice);    border-color: var(--col-ice-border);    background: var(--col-ice-bg); }
+.orbit-badge[data-orbit="火"]    { color: var(--col-fire);   border-color: var(--col-fire-border);   background: var(--col-fire-bg); }
+.orbit-badge[data-orbit="能量"]  { color: var(--col-energy); border-color: var(--col-energy-border); background: var(--col-energy-bg); }
+.orbit-badge[data-orbit="引力"]  { color: var(--col-gravity);border-color: var(--col-gravity-border);background: var(--col-gravity-bg); }
+.orbit-badge[data-orbit="波動"]  { color: var(--col-wave);   border-color: var(--col-wave-border);   background: var(--col-wave-bg); }
+.orbit-badge[data-orbit="金屬"]  { color: var(--col-metal);  border-color: var(--col-metal-border);  background: var(--col-metal-bg); }
+
+.layer-num {
+  font-family: 'Noto Serif TC', serif;
+  font-size: 1.05rem;
+  letter-spacing: 0.05em;
+  font-weight: 500;
+}
+/* layer-num inherits orbit colour from card's data-orbit */
+.panel-card[data-orbit="開放"] .layer-num  { color: var(--col-open); }
+.panel-card[data-orbit="光"] .layer-num    { color: var(--col-light); }
+.panel-card[data-orbit="冰"] .layer-num    { color: var(--col-ice); }
+.panel-card[data-orbit="火"] .layer-num    { color: var(--col-fire); }
+.panel-card[data-orbit="能量"] .layer-num  { color: var(--col-energy); }
+.panel-card[data-orbit="引力"] .layer-num  { color: var(--col-gravity); }
+.panel-card[data-orbit="波動"] .layer-num  { color: var(--col-wave); }
+.panel-card[data-orbit="金屬"] .layer-num  { color: var(--col-metal); }
+
+/* Layer sections */
+.layer-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.layer-block {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 7px;
+  padding: 0.55rem 0.75rem;
+}
+
+.layer-label {
+  font-size: 0.6rem;
+  letter-spacing: 0.15em;
+  color: var(--text-dim);
+  margin-bottom: 0.3rem;
+  text-transform: uppercase;
+}
+
+.layer-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.card-name {
+  font-size: 0.82rem;
+  color: var(--text);
+  font-weight: 400;
+}
+
+.partner-name {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.dir-tag {
+  margin-left: auto;
+  font-size: 0.65rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+.dir-順 { background: rgba(52,211,153,0.12); color: #e3e3e3; border: 1px solid rgba(52,211,153,0.25); }
+.dir-逆 { background: rgba(249,115,22,0.12);  color: #e3e3e3; border: 1px solid rgba(249,115,22,0.25); }
+.dir-na { background: rgba(107,131,168,0.1);  color: var(--text-dim); border: 1px solid rgba(107,131,168,0.2); }
+
+.na-text { font-size: 0.78rem; color: var(--text-dim); }
+
+/* Card footer */
+.card-footer {
+  margin-top: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.video-badge {
+  padding: 0.18rem 0.52rem;
+  border: 1px solid var(--col-open-border);
+  border-radius: 999px;
+  background: var(--col-open-bg);
+  color: var(--col-open);
+  font-size: 0.65rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+.video-badge svg { width: 12px; height: 12px; }
+
+.link-hint {
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  letter-spacing: 0.05em;
+}
+
+/* Empty state */
+.empty-state {
+  text-align: center;
+  padding: 4rem 1rem;
+  color: var(--text-dim);
+}
+.empty-state p { font-size: 0.85rem; margin-top: 0.5rem; }
+
+/* Modal */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  backdrop-filter: blur(4px);
+  z-index: 100;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+.modal-overlay.show { display: flex; }
+
+.modal {
+  background: var(--bg2);
+  border: 1px solid var(--border-bright);
+  border-radius: 14px;
+  max-width: 480px;
+  width: 100%;
+  padding: 1.75rem;
+  position: relative;
+  animation: modalIn 0.2s ease;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.6), 0 0 40px rgba(126,184,247,0.06);
+}
+
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.95) translateY(8px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.modal-close {
+  position: absolute;
+  top: 1rem; right: 1rem;
+  background: none; border: none;
+  color: var(--text-muted); cursor: pointer;
+  font-size: 1.2rem; line-height: 1;
+  transition: color 0.2s;
+}
+.modal-close:hover { color: var(--text); }
+
+.modal-actions-slot {
+  position: absolute;
+  top: 1rem;
+  right: 2.85rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.4rem;
+}
+.modal-actions-slot .save-card-btn,
+.modal-actions-slot .btn-report {
+  width: 4.75rem;
+  height: 1.85rem;
+  box-sizing: border-box;
+  justify-content: center;
+  gap: 0.28rem;
+  padding: 0;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  line-height: 1;
+  background: rgba(255,255,255,0.04);
+  letter-spacing: 0;
+}
+.modal-actions-slot .btn-report {
+  color: var(--text-muted);
+  border-color: var(--border);
+}
+.modal-actions-slot .btn-report:hover {
+  border-color: var(--border-bright);
+  color: var(--text);
+  background: rgba(255,255,255,0.08);
+}
+.modal-actions-slot .btn-report svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+.modal-actions-slot .save-card-btn svg {
+  width: 12px;
+  height: 12px;
+}
+.modal-header { margin-bottom: 1.25rem; }
+.modal-orbit { margin-bottom: 0.4rem; }
+.modal-layer {
+  font-family: 'Noto Serif TC', serif;
+  font-size: 1.5rem;
+  color: var(--gold);
+  letter-spacing: 0.05em;
+}
+.modal-layer-sub { font-size: 0.75rem; color: var(--text-muted); }
+
+.modal-body { display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1.5rem; }
+
+.modal-block {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+}
+
+.modal-block-title {
+  font-size: 0.65rem;
+  letter-spacing: 0.18em;
+  color: var(--text-dim);
+  margin-bottom: 0.6rem;
+  text-transform: uppercase;
+}
+
+.modal-row { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.3rem; flex-wrap: wrap; }
+.modal-row:last-child { margin-bottom: 0; }
+
+.modal-label { font-size: 0.7rem; color: var(--text-muted); min-width: 40px; }
+.modal-val { font-size: 0.85rem; color: var(--text); }
+
+.modal-footer { display: flex; flex-direction: column; gap: 0.6rem; }
+
+.btn-fb {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.75rem;
+  border-radius: 8px;
+  border: 1px solid rgba(147,212,255,0.5);
+  background: rgba(147,212,255,0.25);
+  color: #ffffff;
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 0.82rem;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.2s;
+  letter-spacing: 0.05em;
+}
+.btn-fb:hover { background: rgba(147,212,255,0.38); border-color: rgba(147,212,255,0.7); }
+.btn-fb svg { width: 15px; height: 15px; }
+ 
+.btn-report {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0.55rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.06);
+  color: #ffffff;
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 0.78rem;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.2s;
+  letter-spacing: 0.05em;
+}
+.btn-report:hover { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.35); }
+
+.no-video-note { font-size: 0.7rem; color: var(--text-dim); text-align: center; }
+
+/* Divider in modal */
+.modal-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 0.1rem 0;
+}
+
+/* ── Tab navigation ── */
+.tab-nav {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1.25rem 1rem 0;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.tab-btn {
+  padding: 0.45rem 1.4rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 0.05em;
+}
+.tab-btn:hover { border-color: var(--border-bright); color: var(--text); }
+.tab-btn.active {
+  background: rgba(255,255,255,0.08);
+  border-color: var(--border-bright);
+  color: var(--text);
+  font-weight: 500;
+}
+
+/* ── Section visibility ── */
+.section { display: none; }
+.section.active { display: block; }
+
+/* ── Endless challenge cards ── */
+.endless-filter-panel {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+.endless-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+.endless-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem 1.1rem;
+  cursor: pointer;
+  transition: all 0.25s;
+  position: relative;
+  overflow: hidden;
+}
+.endless-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  opacity: 0;
+  transition: opacity 0.25s;
+}
+.endless-card:hover { background: var(--card-hover); border-color: var(--border-bright); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+.endless-card:hover::before { opacity: 1; }
+
+/* partner colour top bar */
+.endless-card[data-partner="逐光騎士"]::before, .endless-card[data-partner="光獵"]::before, .endless-card[data-partner="暗蝕國王"]::before { background: var(--col-light); }
+.endless-card[data-partner="永恆先知"]::before, .endless-card[data-partner="九黎司命"]::before, .endless-card[data-partner="終末之神"]::before { background: var(--col-ice); }
+.endless-card[data-partner="深海潛行者"]::before, .endless-card[data-partner="潮汐之神"]::before, .endless-card[data-partner="利莫里亞海神"]::before { background: var(--col-fire); }
+.endless-card[data-partner="無盡掠奪者"]::before, .endless-card[data-partner="深淵主宰"]::before, .endless-card[data-partner="銀翼惡魔"]::before { background: var(--col-energy); }
+.endless-card[data-partner="遠空執艦官"]::before, .endless-card[data-partner="終極兵器X-02"]::before, .endless-card[data-partner="冥羅之主"]::before { background: var(--col-gravity); }
+.endless-card[data-partner="夜行狼王"]::before, .endless-card[data-partner="敬請期待1.0"]::before, .endless-card[data-partner="敬請期待2.0"]::before { background: var(--col-metal); }
+
+/* partner badge */
+.partner-badge {
+  font-size: 0.65rem; letter-spacing: 0.1em;
+  padding: 0.18rem 0.6rem; border-radius: 999px;
+  border: 1px solid; font-weight: 500; display: inline-block;
+}
+.partner-badge[data-partner="逐光騎士"], .partner-badge[data-partner="光獵"], .partner-badge[data-partner="暗蝕國王"]
+  { color: var(--col-light);   border-color: var(--col-light-border);   background: var(--col-light-bg); }
+.partner-badge[data-partner="永恆先知"], .partner-badge[data-partner="九黎司命"], .partner-badge[data-partner="終末之神"]
+  { color: var(--col-ice);     border-color: var(--col-ice-border);     background: var(--col-ice-bg); }
+.partner-badge[data-partner="深海潛行者"], .partner-badge[data-partner="潮汐之神"], .partner-badge[data-partner="利莫里亞海神"]
+  { color: var(--col-fire);    border-color: var(--col-fire-border);    background: var(--col-fire-bg); }
+.partner-badge[data-partner="無盡掠奪者"], .partner-badge[data-partner="深淵主宰"], .partner-badge[data-partner="銀翼惡魔"]
+  { color: var(--col-energy);  border-color: var(--col-energy-border);  background: var(--col-energy-bg); }
+.partner-badge[data-partner="遠空執艦官"], .partner-badge[data-partner="終極兵器X-02"], .partner-badge[data-partner="冥羅之主"]
+  { color: var(--col-gravity); border-color: var(--col-gravity-border); background: var(--col-gravity-bg); }
+.partner-badge[data-partner="夜行狼王"], .partner-badge[data-partner="敬請期待1.0"], .partner-badge[data-partner="敬請期待2.0"]
+  { color: var(--col-metal); border-color: var(--col-metal-border); background: var(--col-metal-bg); }
+
+/* endless card body */
+.endless-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; }
+.endless-score {
+  font-family: 'Noto Serif TC', serif;
+  font-size: 1.15rem;
+  letter-spacing: 0.03em;
+  font-weight: 600;
+}
+.endless-card[data-partner="逐光騎士"] .endless-score, .endless-card[data-partner="光獵"] .endless-score, .endless-card[data-partner="暗蝕國王"] .endless-score { color: var(--col-light); }
+.endless-card[data-partner="永恆先知"] .endless-score, .endless-card[data-partner="九黎司命"] .endless-score, .endless-card[data-partner="終末之神"] .endless-score { color: var(--col-ice); }
+.endless-card[data-partner="深海潛行者"] .endless-score, .endless-card[data-partner="潮汐之神"] .endless-score, .endless-card[data-partner="利莫里亞海神"] .endless-score { color: var(--col-fire); }
+.endless-card[data-partner="無盡掠奪者"] .endless-score, .endless-card[data-partner="深淵主宰"] .endless-score, .endless-card[data-partner="銀翼惡魔"] .endless-score { color: var(--col-energy); }
+.endless-card[data-partner="遠空執艦官"] .endless-score, .endless-card[data-partner="終極兵器X-02"] .endless-score, .endless-card[data-partner="冥羅之主"] .endless-score { color: var(--col-gravity); }
+.endless-card[data-partner="夜行狼王"] .endless-score, .endless-card[data-partner="敬請期待1.0"] .endless-score, .endless-card[data-partner="敬請期待2.0"] .endless-score { color: var(--col-metal); }
+
+.endless-info-row { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.35rem; }
+.endless-info-label { font-size: 0.68rem; color: var(--text-dim); min-width: 44px; }
+.endless-info-val { font-size: 0.82rem; color: var(--text); }
+.combo-tag {
+  font-size: 0.68rem; padding: 0.12rem 0.45rem;
+  border-radius: 4px; font-weight: 500;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.12);
+  color: var(--text-muted);
+}
+.endless-footer { margin-top: 0.75rem; display: flex; align-items: center; justify-content: space-between; }
+
+.card-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.save-card-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.04);
+  color: var(--text-muted);
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 0.68rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.save-card-btn:hover,
+.save-card-btn.saved {
+  border-color: var(--border-bright);
+  background: rgba(184,212,255,0.16);
+  color: var(--text);
+}
+.save-card-btn svg {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+}
+/* 搭檔下拉選單 */
+select.card-input {
+  cursor: pointer;
+  color: var(--text);
+}
+select.card-input option {
+  background: var(--bg2);
+  color: var(--text);
+}
+
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--bg3); border-radius: 3px; }
+
+/* ── Local folder / Back to top / bottom buttons ── */
+.local-folder-panel {
+  position: fixed;
+  right: 1.25rem;
+  top: 4.25rem;
+  z-index: 70;
+  width: min(360px, calc(100vw - 2rem));
+  max-height: min(520px, calc(100vh - 2rem));
+  display: none;
+  flex-direction: column;
+  background: rgba(16,31,55,0.72);
+  border: 1px solid rgba(148,178,222,0.42);
+  border-radius: 14px;
+  box-shadow: 0 18px 42px rgba(0,0,0,0.42), 0 0 24px rgba(96,139,201,0.18);
+  backdrop-filter: blur(10px);
+  overflow: hidden;
+}
+.local-folder-panel.show { display: flex; }
+.folder-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1rem 0.75rem;
+  border-bottom: 1px solid rgba(184,212,255,0.16);
+}
+.folder-title {
+  color: #dbe8ff;
+  font-size: 0.88rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+}
+.folder-note {
+  margin-top: 0.25rem;
+  color: rgba(219,232,255,0.72);
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+.folder-close {
+  border: 0;
+  background: transparent;
+  color: rgba(219,232,255,0.72);
+  font-size: 1rem;
+  cursor: pointer;
+  line-height: 1;
+}
+.folder-close:hover { color: #ffffff; }
+.folder-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem;
+  padding: 0.75rem 1rem 0;
+}
+.folder-tab {
+  padding: 0.42rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid rgba(184,212,255,0.24);
+  background: rgba(255,255,255,0.05);
+  color: rgba(219,232,255,0.72);
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 0.74rem;
+  cursor: pointer;
+}
+.folder-tab.active {
+  border-color: rgba(184,212,255,0.48);
+  background: rgba(255,255,255,0.12);
+  color: #dbe8ff;
+}
+.folder-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.65rem 1rem 0;
+}
+.folder-clear-btn {
+  padding: 0.28rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid rgba(184,212,255,0.24);
+  background: rgba(255,255,255,0.05);
+  color: rgba(219,232,255,0.72);
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 0.68rem;
+  cursor: pointer;
+}
+.folder-clear-btn:hover { border-color: rgba(184,212,255,0.48); color: #ffffff; background: rgba(255,255,255,0.12); }
+.folder-list {
+  padding: 0.75rem 1rem 1rem;
+  overflow-y: auto;
+}
+.folder-empty {
+  padding: 1.2rem 0.5rem;
+  color: rgba(219,232,255,0.68);
+  font-size: 0.76rem;
+  text-align: center;
+}
+.folder-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.65rem;
+  align-items: center;
+  padding: 0.7rem 0;
+  border-bottom: 1px solid rgba(184,212,255,0.12);
+}
+.folder-item:last-child { border-bottom: 0; }
+.folder-item-title {
+  color: #dbe8ff;
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+.folder-item-meta {
+  margin-top: 0.22rem;
+  color: rgba(219,232,255,0.68);
+  font-size: 0.68rem;
+  line-height: 1.5;
+}
+.folder-item-link {
+  padding: 0.3rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid rgba(184,212,255,0.24);
+  color: rgba(219,232,255,0.76);
+  background: rgba(255,255,255,0.05);
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 0.68rem;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.folder-item-link:hover {
+  border-color: rgba(184,212,255,0.48);
+  color: #ffffff;
+  background: rgba(255,255,255,0.12);
+}
+.folder-toggle,
+.back-to-top, .back-to-bottom {
+  position: fixed;
+  right: 1.25rem;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 1rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-bright);
+  background: rgba(13,21,38,0.88);
+  backdrop-filter: blur(6px);
+  color: var(--accent);
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 0.78rem;
+  cursor: pointer;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(8px);
+  transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+}
+.folder-toggle {
+  top: 1.25rem;
+  bottom: auto;
+  width: 2.4rem;
+  height: 2.4rem;
+  justify-content: center;
+  padding: 0;
+  border-color: rgba(15,35,70,0.34);
+  background: rgba(207,222,236,0.58);
+  color: #0f2346;
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  overflow: visible;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.24), 0 0 18px rgba(207,222,236,0.34);
+}
+.folder-toggle::before {
+  content: '';
+  position: absolute;
+  inset: -0.45rem;
+  z-index: -1;
+  border-radius: inherit;
+  background: radial-gradient(circle, rgba(207,222,236,0.44) 0%, rgba(207,222,236,0.18) 45%, rgba(207,222,236,0) 72%);
+  filter: blur(8px);
+  pointer-events: none;
+}
+.back-to-top { bottom: 4.25rem; }
+.back-to-bottom { bottom: 1.25rem; }
+.back-to-top.show, .back-to-bottom.show { opacity: 1; visibility: visible; transform: translateY(0); }
+.folder-toggle:hover { border-color: rgba(15,35,70,0.52); background: rgba(224,235,246,0.72); color: #0f2346; }
+.back-to-top:hover, .back-to-bottom:hover { border-color: var(--accent); background: rgba(13,21,38,0.96); }
+.folder-toggle svg, .back-to-top svg, .back-to-bottom svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+@media (max-width: 600px) {
+  .local-folder-panel {
+    right: 1rem;
+    top: 3.85rem;
+    width: calc(100vw - 2rem);
+    max-height: calc(100vh - 7rem);
+  }
+  .folder-toggle { right: 1rem; top: 1rem; bottom: auto; width: 2.25rem; height: 2.25rem; padding: 0; font-size: 0.72rem; }
+  .back-to-top { right: 1rem; bottom: 3.6rem; padding: 0.5rem 0.85rem; font-size: 0.72rem; }
+  .back-to-bottom { right: 1rem; bottom: 1rem; padding: 0.5rem 0.85rem; font-size: 0.72rem; }
+
+  .filter-panel { padding: 1rem; }
+  .filter-header { margin-bottom: 0.875rem; }
+  .filter-title { font-size: 0.76rem; letter-spacing: 0.2em; }
+  .btn-reset-compact {
+    gap: 0.25rem;
+    padding: 0.25rem 0.65rem;
+    font-size: 0.68rem;
+  }
+  .filter-group,
+  .endless-filter-panel .filter-group {
+    flex: none;
+    min-width: 0 !important;
+    max-width: none !important;
+  }
+  .orbit-label { font-size: 0.66rem; margin-bottom: 0.5rem; }
+  .orbit-chips {
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    gap: 0.44rem;
+    max-width: none;
+    margin-bottom: 1rem;
+  }
+  .chip {
+    padding: 0.5rem 0.25rem;
+    border-radius: 9px;
+    font-size: 0.75rem;
+    white-space: nowrap;
+  }
+  .filter-fields {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.625rem;
+    margin-top: 1rem;
+  }
+  .filter-fields .card-group {
+    grid-column: 1 / -1;
+  }
+  .filter-group label { font-size: 0.66rem; letter-spacing: 0.08em; }
+  .layer-input,
+  .card-input {
+    height: 2rem;
+    padding: 0.5rem 0.625rem;
+    font-size: 0.75rem;
+  }
+  .video-toggle {
+    height: 2rem;
+    padding: 0.5rem 0.625rem;
+    gap: 0.375rem;
+    font-size: 0.72rem;
+  }
+  .video-switch {
+    width: 28px;
+    height: 16px;
+  }
+  .video-switch::before {
+    width: 12px;
+    height: 12px;
+  }
+  .video-toggle:has(input:checked) .video-switch::before {
+    transform: translateX(12px);
+  }
+  .dynamic-filter-grid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+  .dynamic-layer-box {
+    padding: 0.75rem;
+  }
+  .layer-input,
+  .card-input,
+  select.card-input {
+    width: 100%;
+  }
+  .cards-grid { grid-template-columns: 1fr; }
+  .endless-grid { grid-template-columns: 1fr; }
+
+  /* tab nav fits smaller screens */
+  .tab-nav { gap: 0.35rem; padding: 1rem 0.75rem 0; }
+  .tab-btn { font-size: 0.75rem; padding: 0.4rem 1rem; }
+}
+
+</style>
+</head>
+<body>
+
+<header>
+   <div class="site-sub">戀與深空戰鬥討論群</div>
+  <div class="site-title" style="margin-top: 0.8rem;">⚔️ 面板資料庫 ⚔️</div>
+  <div class="site-sub" style="margin-top: 0.8rem;">
+    本站收錄「<a href="https://www.facebook.com/share/g/18qcHFWDrj/" target="_blank" rel="noopener" style="color: inherit; text-decoration: underline;">戀與深空戰鬥討論群_臉書面板分享專區</a>」的戰鬥資料，獵人可以在此進行查詢，也歡迎加入前述專區分享、存檔您的通關資料
+  </div>
+</header>
+
+<!-- Tab navigation -->
+<div class="tab-nav">
+  <button class="tab-btn active" onclick="switchTab('panel', this)">軌道</button>
+  <button class="tab-btn" onclick="switchTab('endless', this)">無盡挑戰</button>
+</div>
+
+<!-- Panel section -->
+<div class="section active" id="section-panel">
+<div class="container">
+  <!-- Filter Panel -->
+  <div class="filter-panel">
+    <div class="filter-header">
+      <div class="filter-title">✦ 篩選條件</div>
+      <button class="btn-reset btn-reset-compact" onclick="resetFilters()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 2.6-6.3M3 4v5h5"/></svg>
+        重設
+      </button>
+    </div>
+
+    <div class="orbit-group">
+      <div class="orbit-label">軌道類型</div>
+        <div class="orbit-chips" id="orbitChips">
+          <div class="orbit-row-open">
+            <button class="chip" data-orbit="開放" onclick="selectOrbit(this)">開放穩定</button>
+            <button class="chip" data-orbit="波動" onclick="selectOrbit(this)">開放波動</button>
+          </div>
+          <div class="orbit-divider"></div>
+          <div class="orbit-grid-directional">
+            <button class="chip" data-orbit="光"   onclick="selectOrbit(this)">光</button>
+            <button class="chip" data-orbit="冰"   onclick="selectOrbit(this)">冰</button>
+            <button class="chip" data-orbit="火"   onclick="selectOrbit(this)">火</button>
+            <button class="chip" data-orbit="能量" onclick="selectOrbit(this)">能量</button>
+            <button class="chip" data-orbit="引力" onclick="selectOrbit(this)">引力</button>
+          </div>
+        </div>
+    </div>
+
+    <div class="filter-fields panel-filter-fields">
+      <div class="filter-group layer-group">
+        <label>軌道層數</label>
+        <input class="layer-input" type="number" id="layerInput" placeholder="輸入層數" min="1" oninput="onLayerInput()">
+        <div class="layer-error-msg" id="layerError">輸入內容無效</div>
+      </div>
+
+      <div class="filter-group video-group">
+        <label>影片狀態</label>
+        <label class="video-toggle">
+          <input type="checkbox" id="videoOnly" onchange="applyFilters()">
+          <span class="video-switch"></span>
+          <span>僅看附影片</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="dynamic-filter-panel" id="dynamicFilterPanel">
+      <div class="dynamic-filter-header">
+        <div class="dynamic-filter-title">✦ 配置篩選</div>
+        <button class="btn-reset btn-reset-compact" onclick="clearDynamicFilters()">清除配置</button>
+      </div>
+      <div class="dynamic-filter-grid">
+        <div class="dynamic-layer-box">
+          <div class="dynamic-layer-title">▲ 上層</div>
+          <div class="dynamic-chip-row" id="upperDynamicChips"></div>
+        </div>
+        <div class="dynamic-layer-box">
+          <div class="dynamic-layer-title">▼ 下層</div>
+          <div class="dynamic-chip-row" id="lowerDynamicChips"></div>
+        </div>
+      </div>
+      <div class="dynamic-no-match" id="dynamicNoMatch">找不到完全相符的結果，建議進行單層篩選或嘗試其他配置</div>
+    </div>
+  </div>
+
+  <div class="results-info" id="resultsInfo"></div>
+  <div class="cards-grid" id="cardsGrid"></div>
+</div>
+</div><!-- end section-panel -->
+
+<!-- Endless challenge section -->
+<div class="section" id="section-endless">
+<div class="container">
+
+  <!-- Endless filter panel -->
+  <div class="endless-filter-panel">
+    <div class="filter-header">
+      <div class="filter-title">✦ 篩選條件</div>
+      <button class="btn-reset btn-reset-compact" onclick="resetEndlessFilters()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 2.6-6.3M3 4v5h5"/></svg>
+        重設
+      </button>
+    </div>
+    <div class="filter-fields endless-filter-fields">
+      <div class="filter-group partner-group">
+        <label>搭檔選擇</label>
+        <select class="card-input" id="partnerSelect" onchange="selectPartnerDropdown(this.value)">
+          <option value="">全部搭檔</option>
+          <option value="逐光騎士">沈星回．逐光騎士</option>
+          <option value="光獵">沈星回．光獵</option>
+          <option value="暗蝕國王">沈星回．暗蝕國王</option>
+          <option value="永恆先知">黎深．永恆先知</option>
+          <option value="九黎司命">黎深．九黎司命</option>
+          <option value="終末之神">黎深．終末之神</option>
+          <option value="深海潛行者">祁煜．深海潛行者</option>
+          <option value="潮汐之神">祁煜．潮汐之神</option>
+          <option value="利莫里亞海神">祁煜．利莫里亞海神</option>
+          <option value="無盡掠奪者">秦徹．無盡掠奪者</option>
+          <option value="深淵主宰">秦徹．深淵主宰</option>
+          <option value="銀翼惡魔">秦徹．銀翼惡魔</option>
+          <option value="遠空執艦官">夏以晝．遠空執艦官</option>
+          <option value="終極兵器X-02">夏以晝．終極兵器X-02</option>
+          <option value="冥羅之主">夏以晝．冥羅之主</option>
+        </select>
+     </div>
+      <div class="filter-group video-group">
+        <label>影片狀態</label>
+        <label class="video-toggle">
+          <input type="checkbox" id="endlessVideoOnly" onchange="applyEndlessFilters()">
+          <span class="video-switch"></span>
+          <span>僅看附影片</span>
+        </label>   
+      </div>
+    </div>
+
+    <div class="dynamic-filter-panel" id="endlessDynamicFilterPanel">
+      <div class="dynamic-filter-header">
+        <div class="dynamic-filter-title">✦ 配置篩選</div>
+        <button class="btn-reset btn-reset-compact" onclick="clearEndlessDynamicFilters()">清除配置</button>
+      </div>
+      <div class="dynamic-filter-grid single-column">
+        <div class="dynamic-layer-box">
+          <div class="dynamic-layer-title">日卡選擇</div>
+          <div class="dynamic-chip-row" id="endlessCardChips"></div>
+        </div>
+      </div>
+      <div class="dynamic-no-match" id="endlessDynamicNoMatch">找不到完全相符的結果</div>
+    </div>
+  </div>
+
+  <div class="results-info" id="endlessInfo"></div>
+  <div class="endless-grid" id="endlessGrid"></div>
+</div>
+</div><!-- end section-endless -->
+
+<!-- Modal -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal" id="modal">
+    <button class="modal-close" onclick="closeModalDirect()">✕</button>
+    <div class="modal-actions-slot" id="mActions"></div>
+    <div class="modal-header">
+      <div class="modal-orbit" id="mOrbit"></div>
+      <div class="modal-layer" id="mLayer"></div>
+    </div>
+    <div class="modal-body">
+      <div class="modal-block" id="mUpperBlock">
+        <div id="mUpperContent"></div>
+      </div>
+      <div class="modal-block" id="mLowerBlock">
+        <div class="modal-block-title">▼ 下層</div>
+        <div id="mLowerContent"></div>
+      </div>
+    </div>
+    <div class="modal-footer" id="mFooter"></div>
+  </div>
+</div>
+
+<script>
+
+// Parse data
+const LIMITS = { 光:210, 冰:210, 火:210, 能量:180, 引力:180, 金屬:180, 開放:300, 波動:60 };
+const ORBIT_LABEL = { 開放:'開放穩定', 波動:'開放波動', 光:'光', 冰:'冰', 火:'火', 能量:'能量', 引力:'引力', 金屬:'金屬' };
+
+let DATA = [];
+let ENDLESS_DATA = [];
+let ENDLESS_ALL = [];
+let activeOrbit = null;
+let activePartner = null;
+let activeEndlessCard = null;
+let layerOK = true;
+let currentData = [];
+let activeLayerFilters = { upper: [], lower: [] };
+let activeFolderTab = 'favorites';
+let localFolder = { favorites: [], history: [] };
+const LOCAL_FOLDER_KEY = 'ladsbattle_local_folder_v1';
+
+function loadingMarkup() {
+  return '<span class="loading-inline"><span class="loading-spinner"></span><span class="loading-text">資料載入中…</span></span>';
+}
+
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  return lines.slice(1).map(line => {
+    const cols = line.split(',');
+    return {
+      orbit: cols[0]?.trim(), layer: parseInt(cols[1]),
+      upperCard: cols[2]?.trim(), upperPartner: cols[3]?.trim(), upperDir: cols[4]?.trim(),
+      lowerCard: cols[5]?.trim(), lowerPartner: cols[6]?.trim(), lowerDir: cols[7]?.trim(),
+      hasVideo: cols[8]?.trim() === 'TRUE', link: cols[9]?.trim()
+    };
+  }).filter(d => !isNaN(d.layer));
+}
+
+function parseEndlessCSV(text) {
+  const lines = text.trim().split('\n');
+  return lines.slice(1).map(line => {
+    const cols = line.split(',');
+    return {
+      partner: cols[0]?.trim(),
+      card:    cols[1]?.trim(),
+      combo:   cols[2]?.trim(),
+      score:   cols[3]?.trim(),
+      hasVideo: cols[4]?.trim() === 'TRUE',
+      link:    cols[5]?.trim()
+    };
+  }).filter(d => d.partner);
+}
+
+async function init() {
+  loadLocalFolder();
+  renderFolderPanel();
+  const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTfNvGSQbmwwXodVzmhuZfOAGIIE634hWTA6V1CTaQlF272v3VRJ5t_F7OfSKPH0qbBQbUSvLlQnw3x/pub?output=csv';
+  const ENDLESS_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTfNvGSQbmwwXodVzmhuZfOAGIIE634hWTA6V1CTaQlF272v3VRJ5t_F7OfSKPH0qbBQbUSvLlQnw3x/pub?gid=1577067344&single=true&output=csv';
+
+  // fetch last updated
+  const SHEET_FILE_ID = '19RqMAlpyi1g9pXyJ1azm45pxfjvxRqxJOUCdsQpHKDo';
+  const DRIVE_API_KEY = 'AIzaSyAzbzHaKnhio4gomMkPm-lppgkDpBj6TIw';
+
+  document.getElementById('resultsInfo').innerHTML = loadingMarkup();
+  document.getElementById('endlessInfo').innerHTML = loadingMarkup();
+
+  try {
+    const res = await fetch(CSV_URL);
+    const text = await res.text();
+    DATA = parseCSV(text);
+    applyFilters();
+  } catch (err) {
+    document.getElementById('resultsInfo').innerHTML = '⚠ 資料載入失敗，請重新整理頁面';
+    console.error(err);
+  }
+
+  // fetch last updated, show in footer
+  try {
+    const metaUrl = `https://www.googleapis.com/drive/v3/files/${SHEET_FILE_ID}?fields=modifiedTime&key=${DRIVE_API_KEY}`;
+    const metaRes = await fetch(metaUrl);
+    const meta = await metaRes.json();
+    const lastUpdatedEl = document.getElementById('lastUpdated');
+    if (meta.modifiedTime && lastUpdatedEl) {
+      const d = new Date(meta.modifiedTime);
+      const formatted = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      lastUpdatedEl.textContent = `Last Updated: ${formatted}`;
+    }
+  } catch (err) {
+    console.error('Last Updated fetch failed:', err);
+  }
+
+  try {
+    const res = await fetch(ENDLESS_CSV_URL);
+    const text = await res.text();
+    ENDLESS_ALL = parseEndlessCSV(text);
+    ENDLESS_DATA = [...ENDLESS_ALL];
+    activePartner = null;
+    applyEndlessFilters();
+  } catch (err) {
+    document.getElementById('endlessInfo').innerHTML = '⚠ 資料載入失敗，請重新整理頁面';
+    console.error(err);
+  }
+}
+
+function selectOrbit(btn) {
+  const orbit = btn.dataset.orbit;
+  activeLayerFilters = { upper: [], lower: [] };
+  if (activeOrbit === orbit) {
+    activeOrbit = null;
+    btn.classList.remove('active');
+  } else {
+    document.querySelectorAll('#orbitChips .chip').forEach(c => c.classList.remove('active'));
+    activeOrbit = orbit;
+    btn.classList.add('active');
+  }
+  validateLayer();
+}
+
+function validateLayer() {
+  const val = document.getElementById('layerInput').value.trim();
+  const errEl = document.getElementById('layerError');
+  const inp = document.getElementById('layerInput');
+  layerOK = true;
+  if (val !== '') {
+    const num = parseInt(val);
+    const limit = activeOrbit ? (LIMITS[activeOrbit] || 9999) : 9999;
+    if (isNaN(num) || num < 1 || num > limit) {
+      layerOK = false;
+      inp.classList.add('error-input');
+      errEl.classList.add('show');
+    } else {
+      inp.classList.remove('error-input');
+      errEl.classList.remove('show');
+    }
+  } else {
+    inp.classList.remove('error-input');
+    errEl.classList.remove('show');
+  }
+  if (layerOK) applyFilters();
+}
+
+function onLayerInput() {
+  activeLayerFilters = { upper: [], lower: [] };
+  validateLayer();
+}
+
+function dirLabel(dir) {
+  if (dir === '順') return '順譜';
+  if (dir === '逆') return '逆譜';
+  return dir;
+}
+
+function getBasePanelData(layerNum, videoOnly) {
+  return DATA.filter(d => {
+    if (activeOrbit && d.orbit !== activeOrbit) return false;
+    if (layerNum !== null && d.layer !== layerNum) return false;
+    if (videoOnly && !d.hasVideo) return false;
+    return true;
+  });
+}
+
+function addOption(map, type, value, label = value) {
+  if (!value || value === 'N/A') return;
+  const key = `${type}:${value}`;
+  if (!map.has(key)) map.set(key, { type, value, label });
+}
+
+function leadingRank(value) {
+  const match = String(value).match(/^(\d+)/);
+  return match ? parseInt(match[1], 10) : 999;
+}
+
+function sortCardsByRank(a, b) {
+  const rankDiff = leadingRank(a.value) - leadingRank(b.value);
+  if (rankDiff !== 0) return rankDiff;
+  return a.value.localeCompare(b.value, 'zh-Hant');
+}
+
+function collectLayerOptions(data, side) {
+  const dirMap = new Map();
+  const cardMap = new Map();
+  const partnerMap = new Map();
+  const prefix = side === 'upper' ? 'upper' : 'lower';
+  data.forEach(d => {
+    addOption(dirMap, 'dir', d[`${prefix}Dir`], dirLabel(d[`${prefix}Dir`]));
+    addOption(cardMap, 'card', d[`${prefix}Card`]);
+    addOption(partnerMap, 'partner', d[`${prefix}Partner`]);
+  });
+  const dirs = ['順', '逆']
+    .map(dir => dirMap.get(`dir:${dir}`))
+    .filter(Boolean);
+  const cards = [...cardMap.values()].sort(sortCardsByRank);
+  const partners = [...partnerMap.values()].sort((a, b) => a.value.localeCompare(b.value, 'zh-Hant'));
+  return [...dirs, ...cards, ...partners];
+}
+
+function isDynamicFilterActive(side, option) {
+  return activeLayerFilters[side].some(f => f.type === option.type && f.value === option.value);
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function loadLocalFolder() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(LOCAL_FOLDER_KEY) || '{}');
+    localFolder = {
+      favorites: Array.isArray(saved.favorites) ? saved.favorites : [],
+      history: Array.isArray(saved.history) ? saved.history : []
+    };
+  } catch (err) {
+    localFolder = { favorites: [], history: [] };
+  }
+}
+
+function saveLocalFolder() {
+  localStorage.setItem(LOCAL_FOLDER_KEY, JSON.stringify(localFolder));
+}
+
+function itemKey(item) {
+  return `${item.type}:${item.link}`;
+}
+
+function panelFolderItem(d) {
+  return {
+    type: 'panel',
+    link: d.link,
+    title: `${ORBIT_LABEL[d.orbit] || d.orbit} ${d.layer} 層`,
+    meta: `上層 ${d.upperCard}｜下層 ${d.lowerCard}`,
+    badge: d.hasVideo ? '附影片' : '',
+    savedAt: Date.now()
+  };
+}
+
+function endlessFolderItem(d) {
+  return {
+    type: 'endless',
+    link: d.link,
+    partner: d.partner,
+    card: d.card,
+    score: fmtScore(d.score),
+    combo: d.combo,
+    title: `無盡挑戰｜${d.partner}`,
+    meta: `${d.card}｜${fmtScore(d.score)} 分｜${d.combo} 譜`,
+    badge: d.hasVideo ? '附影片' : '',
+    savedAt: Date.now()
+  };
+}
+
+function displayFolderItem(item) {
+  if (item.type !== 'endless') return item;
+  let partner = item.partner || '';
+  let card = item.card || '';
+  let score = item.score || '';
+  let combo = item.combo || '';
+
+  if ((!partner || !card) && item.title) {
+    const parts = item.title.split('｜');
+    if (parts[0] === '無盡挑戰') {
+      partner = partner || parts[1] || '';
+    } else {
+      partner = partner || parts[0] || '';
+      card = card || parts[1] || '';
+    }
+  }
+
+  if ((!score || !combo || !card) && item.meta) {
+    const parts = item.meta.split('｜');
+    if (parts[0]?.startsWith('無盡挑戰')) {
+      score = score || parts[0].replace('無盡挑戰', '').replace('分', '').trim();
+      combo = combo || parts[1]?.replace('譜', '').trim() || '';
+    } else {
+      card = card || parts[0] || '';
+      score = score || parts[1]?.replace('分', '').trim() || '';
+      combo = combo || parts[2]?.replace('譜', '').trim() || '';
+    }
+  }
+
+  return {
+    ...item,
+    title: `無盡挑戰｜${partner || '未指定搭檔'}`,
+    meta: `${card || '未指定日卡'}｜${score || '—'} 分｜${combo || '—'} 譜`
+  };
+}
+
+function isFavorite(item) {
+  const key = itemKey(item);
+  return localFolder.favorites.some(saved => itemKey(saved) === key);
+}
+
+function toggleFavorite(item, event) {
+  if (event) event.stopPropagation();
+  const key = itemKey(item);
+  const idx = localFolder.favorites.findIndex(saved => itemKey(saved) === key);
+  if (idx >= 0) {
+    localFolder.favorites.splice(idx, 1);
+  } else {
+    localFolder.favorites.unshift({ ...item, savedAt: Date.now() });
+  }
+  saveLocalFolder();
+  renderCards();
+  renderEndless();
+  renderFolderPanel();
+}
+
+function toggleFavoriteFromButton(btn, event) {
+  const item = JSON.parse(decodeURIComponent(btn.dataset.item));
+  toggleFavorite(item, event);
+  updateFavoriteButtonState(btn, item);
+}
+
+function updateFavoriteButtonState(btn, item) {
+  const saved = isFavorite(item);
+  btn.classList.toggle('saved', saved);
+  const icon = btn.querySelector('svg');
+  const label = btn.querySelector('.save-card-label');
+  if (icon) icon.setAttribute('fill', saved ? 'currentColor' : 'none');
+  if (label) label.textContent = saved ? '已收藏' : '收藏';
+}
+
+function addHistoryItem(item) {
+  const key = itemKey(item);
+  localFolder.history = localFolder.history.filter(saved => itemKey(saved) !== key);
+  localFolder.history.unshift({ ...item, savedAt: Date.now() });
+  localFolder.history = localFolder.history.slice(0, 50);
+  saveLocalFolder();
+  renderFolderPanel();
+}
+
+function favoriteButton(item) {
+  const saved = isFavorite(item);
+  const encodedItem = encodeURIComponent(JSON.stringify(item));
+  return `
+    <button class="save-card-btn ${saved ? 'saved' : ''}" data-item="${encodedItem}" onclick="toggleFavoriteFromButton(this, event)">
+      <svg viewBox="0 0 24 24" fill="${saved ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
+        <path d="M3 6.5A2.5 2.5 0 0 1 5.5 4H10l2 2h6.5A2.5 2.5 0 0 1 21 8.5v8A2.5 2.5 0 0 1 18.5 19h-13A2.5 2.5 0 0 1 3 16.5z"/>
+        <path d="M3 9h18"/>
+      </svg>
+      <span class="save-card-label">${saved ? '已收藏' : '收藏'}</span>
+    </button>`;
+}
+
+function reportButton(reportUrl) {
+  return `
+    <a href="${reportUrl}" target="_blank" rel="noopener" class="btn-report">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 3 22 20H2L12 3z"/>
+        <path d="M12 9v5"/>
+        <path d="M12 17h.01"/>
+      </svg>
+      回報
+    </a>`;
+}
+
+function toggleFolderPanel() {
+  const panel = document.getElementById('localFolderPanel');
+  if (!panel) return;
+  panel.classList.toggle('show');
+  renderFolderPanel();
+}
+
+function closeFolderPanel() {
+  document.getElementById('localFolderPanel')?.classList.remove('show');
+}
+
+function switchFolderTab(tab) {
+  activeFolderTab = tab;
+  renderFolderPanel();
+}
+
+function clearFolderTab() {
+  const target = activeFolderTab === 'favorites' ? '【收藏】？' : '【瀏覽記錄】？';
+  if (!confirm(`以下操作無法復原，是否確認刪除${target}`)) return;
+  localFolder[activeFolderTab] = [];
+  saveLocalFolder();
+  renderCards();
+  renderEndless();
+  renderFolderPanel();
+}
+
+function openFolderItemFromButton(btn) {
+  const item = JSON.parse(decodeURIComponent(btn.dataset.item));
+  if (item.type === 'panel') {
+    const d = DATA.find(row => row.link === item.link);
+    if (d) {
+      openPanelDetail(d, false);
+      return;
+    }
+  }
+  if (item.type === 'endless') {
+    const d = ENDLESS_ALL.find(row => row.link === item.link);
+    if (d) {
+      openEndlessDetail(d, false);
+      return;
+    }
+  }
+  closeFolderPanel();
+  window.open(item.link, '_blank', 'noopener');
+}
+
+function renderFolderPanel() {
+  const panel = document.getElementById('localFolderPanel');
+  const list = document.getElementById('folderList');
+  const clearBtn = document.getElementById('folderClearBtn');
+  if (!panel || !list || !clearBtn) return;
+  document.querySelectorAll('.folder-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === activeFolderTab);
+  });
+  const items = localFolder[activeFolderTab] || [];
+  clearBtn.disabled = items.length === 0;
+  if (items.length === 0) {
+    list.innerHTML = `<div class="folder-empty">${activeFolderTab === 'favorites' ? '尚未收藏任何資料' : '尚無瀏覽記錄'}</div>`;
+    return;
+  }
+  list.innerHTML = items.map(item => {
+    const displayItem = displayFolderItem(item);
+    const encodedItem = encodeURIComponent(JSON.stringify(item));
+    return `
+    <div class="folder-item">
+      <div>
+        <div class="folder-item-title">${escapeHtml(displayItem.title)}</div>
+        <div class="folder-item-meta">${escapeHtml(displayItem.meta || '')}${displayItem.badge ? `｜${escapeHtml(displayItem.badge)}` : ''}</div>
+      </div>
+      <button class="folder-item-link" data-item="${encodedItem}" onclick="openFolderItemFromButton(this)">查看</button>
+    </div>
+  `;
+  }).join('');
+}
+
+function toggleDynamicFilter(side, type, value) {
+  const filters = activeLayerFilters[side];
+  const idx = filters.findIndex(f => f.type === type && f.value === value);
+  if (idx >= 0) {
+    filters.splice(idx, 1);
+  } else {
+    const sameTypeIdx = filters.findIndex(f => f.type === type);
+    if (sameTypeIdx >= 0) filters.splice(sameTypeIdx, 1);
+    filters.push({ type, value });
+  }
+  applyFilters();
+}
+
+function toggleDynamicFilterFromButton(btn) {
+  toggleDynamicFilter(btn.dataset.side, btn.dataset.type, btn.dataset.value);
+}
+
+function clearDynamicFilters() {
+  activeLayerFilters = { upper: [], lower: [] };
+  applyFilters();
+}
+
+function renderDynamicFilterSide(side, options) {
+  const el = document.getElementById(side === 'upper' ? 'upperDynamicChips' : 'lowerDynamicChips');
+  if (!el) return;
+  if (options.length === 0) {
+    el.innerHTML = '<span class="dynamic-empty">目前無可用條件</span>';
+    return;
+  }
+  el.innerHTML = options.map(option => `
+    <button class="dynamic-chip ${isDynamicFilterActive(side, option) ? 'active' : ''}"
+      data-side="${side}"
+      data-type="${option.type}"
+      data-value="${escapeHtml(option.value)}"
+      onclick="toggleDynamicFilterFromButton(this)">
+      ${escapeHtml(option.label)}
+    </button>
+  `).join('');
+}
+
+function renderDynamicFilters(baseData, layerNum) {
+  const panel = document.getElementById('dynamicFilterPanel');
+  const noMatch = document.getElementById('dynamicNoMatch');
+  if (!panel) return;
+  const shouldShow = activeOrbit && layerNum !== null && layerOK;
+  panel.classList.toggle('show', shouldShow);
+  if (!shouldShow) {
+    activeLayerFilters = { upper: [], lower: [] };
+    if (noMatch) noMatch.classList.remove('show');
+    return;
+  }
+  renderDynamicFilterSide('upper', collectLayerOptions(baseData, 'upper'));
+  renderDynamicFilterSide('lower', collectLayerOptions(baseData, 'lower'));
+}
+
+function matchesLayerFilters(d, side) {
+  const filters = activeLayerFilters[side];
+  if (filters.length === 0) return true;
+  const prefix = side === 'upper' ? 'upper' : 'lower';
+  return filters.every(filter => {
+    if (filter.type === 'dir') return d[`${prefix}Dir`] === filter.value;
+    if (filter.type === 'card') return d[`${prefix}Card`] === filter.value;
+    if (filter.type === 'partner') return d[`${prefix}Partner`] === filter.value;
+    return true;
+  });
+}
+
+function applyFilters() {
+  const layerVal = document.getElementById('layerInput').value.trim();
+  const layerNum = layerVal !== '' ? parseInt(layerVal) : null;
+  const videoOnly = document.getElementById('videoOnly').checked;
+  const baseData = getBasePanelData(layerNum, videoOnly);
+  renderDynamicFilters(baseData, layerNum);
+  currentData = baseData.filter(d => matchesLayerFilters(d, 'upper') && matchesLayerFilters(d, 'lower'));
+  const noMatch = document.getElementById('dynamicNoMatch');
+  const hasSelectedDynamicFilters = activeLayerFilters.upper.length > 0 || activeLayerFilters.lower.length > 0;
+  if (noMatch) noMatch.classList.toggle('show', hasSelectedDynamicFilters && currentData.length === 0);
+  renderCards();
+}
+
+function resetFilters() {
+  activeOrbit = null;
+  activeLayerFilters = { upper: [], lower: [] };
+  document.querySelectorAll('#orbitChips .chip').forEach(c => c.classList.remove('active'));
+  document.getElementById('layerInput').value = '';
+  document.getElementById('layerInput').classList.remove('error-input');
+  document.getElementById('layerError').classList.remove('show');
+  document.getElementById('videoOnly').checked = false;
+  layerOK = true;
+  applyFilters();
+}
+
+function cardLayerBlock(card, partner, dir, label) {
+  if (card === 'N/A') return `<div class="layer-block"><div class="layer-label">${label}</div><div class="layer-info"><span class="na-text">單層面板</span></div></div>`;
+  const dirHtml = (dir && dir !== 'N/A')
+    ? `<span class="dir-tag dir-${dir}" style="margin-left:auto">${dir}譜</span>`
+    : '';
+  return `<div class="layer-block">
+    <div class="layer-label">${label}</div>
+    <div class="layer-info">
+      <div><div class="card-name">${card}</div><div class="partner-name">${partner}</div></div>
+      ${dirHtml}
+    </div>
+  </div>`;
+}
+
+function renderCards() {
+  const grid = document.getElementById('cardsGrid');
+  document.getElementById('resultsInfo').innerHTML = `共找到 <span>${currentData.length}</span> 筆結果`;
+  if (currentData.length === 0) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div style="font-size:2rem;margin-bottom:0.5rem;opacity:0.3">😣</div><p>找不到符合條件的結果，期待您成為第一位分享者✨</p></div>`;
+    updateScrollButtons();
+    return;
+  }
+  grid.innerHTML = currentData.map((d, i) => `
+    <div class="panel-card" data-orbit="${d.orbit}" onclick="openModal(${i})">
+      <div class="card-orbit-bar">
+        <div class="card-labels">
+          <span class="orbit-badge" data-orbit="${d.orbit}">${ORBIT_LABEL[d.orbit] || d.orbit}</span>
+          ${d.hasVideo ? '<span class="video-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg> 附影片</span>' : ''}
+        </div>
+        <div class="card-meta-right">
+          <span class="layer-num">${d.layer} 層</span>
+        </div>
+      </div>
+      <div class="layer-section">
+        ${cardLayerBlock(d.upperCard, d.upperPartner, d.upperDir, '▲ 上層')}
+        ${cardLayerBlock(d.lowerCard, d.lowerPartner, d.lowerDir, '▼ 下層')}
+      </div>
+      <div class="card-footer">
+        <span></span>
+        <span class="link-hint">點擊查看詳情 →</span>
+      </div>
+    </div>`).join('');
+  updateScrollButtons();
+}
+
+function dirTag(dir) {
+  if (!dir || dir === 'N/A') return '<span class="dir-tag dir-na">—</span>';
+  return `<span class="dir-tag dir-${dir}">${dir}</span>`;
+}
+
+function modalBlock(card, partner, dir) {
+  if (card === 'N/A') return '<div class="modal-row"><span class="na-text" style="color:var(--text-dim)">單層面板（無此層配置）</span></div>';
+  const dirText = dir === '順' ? '順譜' : dir === '逆' ? '逆譜' : '—';
+  return `<div class="modal-row"><span class="modal-label">日卡</span><span class="modal-val">${card}</span></div>
+    <div class="modal-row"><span class="modal-label">搭檔</span><span class="modal-val">${partner}</span></div>
+    <div class="modal-row"><span class="modal-label">對譜情形</span><span class="modal-val">${dirText}</span></div>`;
+}
+
+function openPanelDetail(d, recordHistory = true) {
+  const folderItem = panelFolderItem(d);
+  if (recordHistory) addHistoryItem(folderItem);
+  // restore block titles for panel cards
+  document.getElementById('mUpperBlock').querySelector('.modal-block-title') && document.getElementById('mUpperBlock').querySelector('.modal-block-title').remove();
+  document.getElementById('mLowerBlock').querySelector('.modal-block-title') && document.getElementById('mLowerBlock').querySelector('.modal-block-title').remove();
+  document.getElementById('mUpperBlock').insertAdjacentHTML('afterbegin', '<div class="modal-block-title">▲ 上層</div>');
+  document.getElementById('mLowerBlock').insertAdjacentHTML('afterbegin', '<div class="modal-block-title">▼ 下層</div>');
+
+  document.getElementById('mOrbit').innerHTML = `<span class="orbit-badge" data-orbit="${d.orbit}">${ORBIT_LABEL[d.orbit] || d.orbit}軌道</span>`;
+  document.getElementById('mLayer').textContent = d.layer;
+const orbitColors = {
+  開放: 'var(--col-open)', 光: 'var(--col-light)', 冰: 'var(--col-ice)',
+  火: 'var(--col-fire)', 能量: 'var(--col-energy)', 引力: 'var(--col-gravity)',
+  波動: 'var(--col-wave)', 金屬: 'var(--col-metal)'
+};
+document.getElementById('mLayer').style.color = orbitColors[d.orbit] || 'var(--text)';
+  document.getElementById('mUpperContent').innerHTML = modalBlock(d.upperCard, d.upperPartner, d.upperDir);
+  document.getElementById('mLowerContent').innerHTML = modalBlock(d.lowerCard, d.lowerPartner, d.lowerDir);
+
+  const orbitLabel = ORBIT_LABEL[d.orbit] || d.orbit;
+  const reportUrl = `https://docs.google.com/forms/d/e/1FAIpQLSdu-eI87wlkR2LnTlwc3kzHD4pz_PL1-gydhwCr7W-7HKOxyg/viewform?usp=pp_url&entry.1527588954=${encodeURIComponent(orbitLabel)}&entry.1863774587=${encodeURIComponent(d.layer)}&entry.1242930374=${encodeURIComponent(d.link)}`;
+
+  document.getElementById('mActions').innerHTML = favoriteButton(folderItem) + reportButton(reportUrl);
+  document.getElementById('mFooter').innerHTML = `
+    <a href="${d.link}" target="_blank" rel="noopener" class="btn-fb">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+      前往Facebook查看
+    </a>`;
+
+  document.getElementById('modalOverlay').classList.add('show');
+}
+
+function openModal(idx) {
+  openPanelDetail(currentData[idx]);
+}
+
+function switchTab(tab, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('section-' + tab).classList.add('active');
+  updateScrollButtons();
+}
+
+function selectPartnerDropdown(value) {
+  activePartner = value || null;
+  activeEndlessCard = null;
+  applyEndlessFilters();
+}
+
+function collectEndlessCardOptions(data) {
+  const cardMap = new Map();
+  data.forEach(d => addOption(cardMap, 'card', d.card));
+  return [...cardMap.values()].sort(sortCardsByRank);
+}
+
+function renderEndlessDynamicFilters(baseData) {
+  const panel = document.getElementById('endlessDynamicFilterPanel');
+  const chips = document.getElementById('endlessCardChips');
+  const noMatch = document.getElementById('endlessDynamicNoMatch');
+  if (!panel || !chips) return;
+  const shouldShow = Boolean(activePartner);
+  panel.classList.toggle('show', shouldShow);
+  if (!shouldShow) {
+    activeEndlessCard = null;
+    if (noMatch) noMatch.classList.remove('show');
+    return;
+  }
+
+  const options = collectEndlessCardOptions(baseData);
+  if (options.length === 0) {
+    chips.innerHTML = '<span class="dynamic-empty">目前無可用日卡</span>';
+    return;
+  }
+  chips.innerHTML = options.map(option => `
+    <button class="dynamic-chip ${activeEndlessCard === option.value ? 'active' : ''}"
+      data-value="${escapeHtml(option.value)}"
+      onclick="toggleEndlessCardFilter(this.dataset.value)">
+      ${escapeHtml(option.label)}
+    </button>
+  `).join('');
+}
+
+function toggleEndlessCardFilter(value) {
+  activeEndlessCard = activeEndlessCard === value ? null : value;
+  applyEndlessFilters();
+}
+
+function clearEndlessDynamicFilters() {
+  activeEndlessCard = null;
+  applyEndlessFilters();
+}
+
+function applyEndlessFilters() {
+  const videoOnly = document.getElementById('endlessVideoOnly').checked;
+  const baseData = ENDLESS_ALL.filter(d => {
+    if (activePartner && d.partner !== activePartner) return false;
+    if (videoOnly && !d.hasVideo) return false;
+    return true;
+  });
+  renderEndlessDynamicFilters(baseData);
+  ENDLESS_DATA = baseData.filter(d => !activeEndlessCard || d.card === activeEndlessCard);
+  const noMatch = document.getElementById('endlessDynamicNoMatch');
+  if (noMatch) noMatch.classList.toggle('show', Boolean(activeEndlessCard) && ENDLESS_DATA.length === 0);
+  renderEndless();
+}
+
+function resetEndlessFilters() {
+  activePartner = null;
+  activeEndlessCard = null;
+  document.getElementById('partnerSelect').value = '';
+  document.getElementById('endlessVideoOnly').checked = false;
+  ENDLESS_DATA = [...ENDLESS_ALL];
+  renderEndlessDynamicFilters(ENDLESS_DATA);
+  renderEndless();
+}
+
+function fmtScore(s) {
+  const n = parseInt(s);
+  if (isNaN(n)) return s;
+  return n.toLocaleString();
+}
+
+function renderEndless() {
+  const grid = document.getElementById('endlessGrid');
+  const info = document.getElementById('endlessInfo');
+  info.innerHTML = `共找到 <span>${ENDLESS_DATA.length}</span> 筆結果`;
+  if (ENDLESS_DATA.length === 0) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div style="font-size:2rem;margin-bottom:0.5rem;opacity:0.3">😣</div><p>找不到符合條件的結果，期待您成為第一位分享者✨</p></div>`;
+    updateScrollButtons();
+    return;
+  }
+  grid.innerHTML = ENDLESS_DATA.map((d, i) => `
+    <div class="endless-card" data-partner="${d.partner}" onclick="openEndlessModal(${i})">
+      <div class="endless-card-header">
+        <div class="card-labels">
+          <span class="partner-badge" data-partner="${d.partner}">${d.partner}</span>
+          ${d.hasVideo ? '<span class="video-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg> 附影片</span>' : ''}
+        </div>
+        <div class="card-meta-right">
+          <span class="endless-score">${fmtScore(d.score)} 分</span>
+        </div>
+      </div>
+      <div class="endless-info-row">
+        <span class="endless-info-label">日卡</span>
+        <span class="endless-info-val">${d.card}</span>
+      </div>
+      <div class="endless-info-row">
+        <span class="endless-info-label">對譜數</span>
+        <span class="combo-tag">${d.combo} 譜</span>
+      </div>
+      <div class="endless-footer">
+        <span></span>
+        <span class="link-hint">點擊查看詳情 →</span>
+      </div>
+    </div>`).join('');
+  updateScrollButtons();
+}
+
+function openEndlessDetail(d, recordHistory = true) {
+  const folderItem = endlessFolderItem(d);
+  if (recordHistory) addHistoryItem(folderItem);
+  // remove block titles for endless (no upper/lower layers)
+  document.getElementById('mUpperBlock').querySelector('.modal-block-title') && document.getElementById('mUpperBlock').querySelector('.modal-block-title').remove();
+  document.getElementById('mLowerBlock').querySelector('.modal-block-title') && document.getElementById('mLowerBlock').querySelector('.modal-block-title').remove();
+
+  document.getElementById('mOrbit').innerHTML = `<span class="partner-badge" data-partner="${d.partner}">${d.partner}</span>`;
+  document.getElementById('mLayer').textContent = fmtScore(d.score) + ' 分';
+  document.getElementById('mLayer').style.color = 'var(--text)';
+  document.getElementById('mUpperContent').innerHTML = `
+    <div class="modal-row"><span class="modal-label">日卡</span><span class="modal-val">${d.card}</span></div>
+    <div class="modal-row"><span class="modal-label">對譜數</span><span class="modal-val">${d.combo} 譜</span></div>`;
+  document.getElementById('mLowerBlock').style.display = 'none';
+
+  const reportUrl = `https://docs.google.com/forms/d/e/1FAIpQLSdP6bWGJ6GFkyOZ7dWsqDbiup7KzTyJGxw9Feta-EqCS3pG6w/viewform?usp=pp_url&entry.1527588954=${encodeURIComponent(d.partner)}&entry.1242930374=${encodeURIComponent(d.link)}`;
+
+  document.getElementById('mActions').innerHTML = favoriteButton(folderItem) + reportButton(reportUrl);
+  document.getElementById('mFooter').innerHTML = `
+    <a href="${d.link}" target="_blank" rel="noopener" class="btn-fb">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+      前往Facebook查看
+    </a>`;
+  document.getElementById('modalOverlay').classList.add('show');
+}
+
+function openEndlessModal(idx) {
+  openEndlessDetail(ENDLESS_DATA[idx]);
+}
+
+function closeModal(e) { if (e.target === document.getElementById('modalOverlay')) closeModalDirect(); }
+function closeModalDirect() {
+  document.getElementById('modalOverlay').classList.remove('show');
+  document.getElementById('mLowerBlock').style.display = '';
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModalDirect(); });
+
+function scrollToTop() {
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+function scrollToBottom() {
+  window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
+}
+
+function updateScrollButtons() {
+  const topBtn = document.getElementById('backToTopBtn');
+  const bottomBtn = document.getElementById('backToBottomBtn');
+  if (!topBtn || !bottomBtn) return;
+  const viewportH = window.innerHeight;
+  const fullH = document.documentElement.scrollHeight;
+  const maxScroll = fullH - viewportH;
+
+  // top botton and bottom botton setting
+  if (maxScroll <= 0) {
+    topBtn.classList.remove('show');
+    bottomBtn.classList.remove('show');
+    return;
+  }
+
+  const scrollY = window.scrollY;
+  const showTopBtnAfter = 500;
+  topBtn.classList.toggle('show', scrollY > showTopBtnAfter);
+  bottomBtn.classList.toggle('show', (maxScroll - scrollY) > 10);
+}
+
+window.addEventListener('scroll', updateScrollButtons);
+window.addEventListener('resize', updateScrollButtons);
+
+init();
+updateScrollButtons();
+</script>
+
+<footer class="site-footer">
+  This website belongs to 
+  <a href="https://line.me/ti/g2/gw9Ds6tjgN1mPRRCKbc7pLofd4Wzd1MJoR71eQ" target="_blank">
+    戀與深空戰鬥討論群
+  </a>
+  , created by 
+  <a href="https://www.threads.com/@tingtingwang_tw" target="_blank">
+    Ting Ting Wang
+  </a>
+  <div id="lastUpdated"></div>
+</footer>
+
+<div class="local-folder-panel" id="localFolderPanel">
+  <div class="folder-header">
+    <div>
+      <div class="folder-title">個人資料夾</div>
+      <div class="folder-note">以下資料僅會儲存於本機瀏覽器</div>
+    </div>
+    <button class="folder-close" onclick="closeFolderPanel()" aria-label="關閉資料夾">✕</button>
+  </div>
+  <div class="folder-tabs">
+    <button class="folder-tab active" data-tab="favorites" onclick="switchFolderTab('favorites')">收藏</button>
+    <button class="folder-tab" data-tab="history" onclick="switchFolderTab('history')">瀏覽記錄</button>
+  </div>
+  <div class="folder-toolbar">
+    <button class="folder-clear-btn" id="folderClearBtn" onclick="clearFolderTab()">清除</button>
+  </div>
+  <div class="folder-list" id="folderList"></div>
+</div>
+
+<button class="folder-toggle" id="folderToggleBtn" onclick="toggleFolderPanel()" aria-label="資料夾">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <path d="M3 6.5A2.5 2.5 0 0 1 5.5 4H10l2 2h6.5A2.5 2.5 0 0 1 21 8.5v8A2.5 2.5 0 0 1 18.5 19h-13A2.5 2.5 0 0 1 3 16.5z"/>
+    <path d="M3 9h18"/>
+  </svg>
+</button>
+
+<button class="back-to-top" id="backToTopBtn" onclick="scrollToTop()">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+  去頁首
+</button>
+
+<button class="back-to-bottom" id="backToBottomBtn" onclick="scrollToBottom()">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
+  去頁尾
+</button>
+
+</body>
+</html>
