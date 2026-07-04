@@ -1501,6 +1501,22 @@ function loadingMarkup() {
   return '<span class="loading-inline"><span class="loading-spinner"></span><span class="loading-text">資料載入中…</span></span>';
 }
 
+function formatTaipeiDateTime(value) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Taipei',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  }).formatToParts(new Date(value)).reduce((acc, part) => {
+    acc[part.type] = part.value;
+    return acc;
+  }, {});
+  return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}`;
+}
+
 function parseCSV(text) {
   const lines = text.trim().split('\n');
   return lines.slice(1).map(line => {
@@ -1559,9 +1575,8 @@ async function init() {
     const meta = await metaRes.json();
     const lastUpdatedEl = document.getElementById('lastUpdated');
     if (meta.modifiedTime && lastUpdatedEl) {
-      const d = new Date(meta.modifiedTime);
-      const formatted = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-      lastUpdatedEl.textContent = `Last Updated: ${formatted}`;
+      const formatted = formatTaipeiDateTime(meta.modifiedTime);
+      lastUpdatedEl.textContent = `Last Updated: ${formatted} (UTC+8)`;
     }
   } catch (err) {
     console.error('Last Updated fetch failed:', err);
@@ -1648,10 +1663,35 @@ function leadingRank(value) {
   return match ? parseInt(match[1], 10) : 999;
 }
 
-function sortCardsByRank(a, b) {
-  const rankDiff = leadingRank(a.value) - leadingRank(b.value);
-  if (rankDiff !== 0) return rankDiff;
-  return a.value.localeCompare(b.value, 'zh-Hant');
+function cardSetName(value) {
+  const text = String(value || '').trim();
+  const match = text.match(/^\d+\s*階\s*(.+)$/);
+  return match ? match[1].trim() : text;
+}
+
+function sortCardsBySetAndRank(cards) {
+  const setMinRank = new Map();
+  cards.forEach(card => {
+    if (card.value === '無套裝') return;
+    const setName = cardSetName(card.value);
+    const rank = leadingRank(card.value);
+    const current = setMinRank.get(setName);
+    if (current === undefined || rank < current) setMinRank.set(setName, rank);
+  });
+
+  return cards.sort((a, b) => {
+    if (a.value === '無套裝' && b.value !== '無套裝') return -1;
+    if (b.value === '無套裝' && a.value !== '無套裝') return 1;
+    const aSet = cardSetName(a.value);
+    const bSet = cardSetName(b.value);
+    const setRankDiff = (setMinRank.get(aSet) ?? 999) - (setMinRank.get(bSet) ?? 999);
+    if (setRankDiff !== 0) return setRankDiff;
+    const setNameDiff = aSet.localeCompare(bSet, 'zh-Hant');
+    if (setNameDiff !== 0) return setNameDiff;
+    const rankDiff = leadingRank(a.value) - leadingRank(b.value);
+    if (rankDiff !== 0) return rankDiff;
+    return a.value.localeCompare(b.value, 'zh-Hant');
+  });
 }
 
 function collectLayerOptions(data, side) {
@@ -1667,7 +1707,7 @@ function collectLayerOptions(data, side) {
   const dirs = ['順', '逆']
     .map(dir => dirMap.get(`dir:${dir}`))
     .filter(Boolean);
-  const cards = [...cardMap.values()].sort(sortCardsByRank);
+  const cards = sortCardsBySetAndRank([...cardMap.values()]);
   const partners = [...partnerMap.values()].sort((a, b) => a.value.localeCompare(b.value, 'zh-Hant'));
   return [...dirs, ...cards, ...partners];
 }
@@ -2115,7 +2155,7 @@ function selectPartnerDropdown(value) {
 function collectEndlessCardOptions(data) {
   const cardMap = new Map();
   data.forEach(d => addOption(cardMap, 'card', d.card));
-  return [...cardMap.values()].sort(sortCardsByRank);
+  return sortCardsBySetAndRank([...cardMap.values()]);
 }
 
 function renderEndlessDynamicFilters(baseData) {
