@@ -41,14 +41,17 @@
   line-height: 2.2;
 }
 
-.site-footer a {
+.site-footer a,
+.header-link {
   color: #aaa;
   text-decoration: none;
-  transition: opacity 0.2s ease;
+  font-weight: 400;
+  transition: color 0.2s ease, opacity 0.2s ease;
 }
 
-.site-footer a:hover {
-  opacity: 0.7;
+.site-footer a:hover,
+.header-link:hover {
+  color: #dbe8ff;
   text-decoration: underline;
 }
 
@@ -105,19 +108,67 @@ body::after {
 header {
   position: relative;
   z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   text-align: center;
-  padding: 3rem 1.5rem 2rem;
-  border-bottom: 1px solid var(--border);
+  padding: 3rem 1.5rem 1.2rem;
 }
 
 .site-title {
   font-family: 'Noto Serif TC', serif;
-  font-size: clamp(1.4rem, 4vw, 2rem);
+  font-size: clamp(1.75rem, 4.6vw, 2.45rem);
   font-weight: 600;
   color: #f0f6ff;
   letter-spacing: 0.15em;
   text-shadow: 0 0 30px rgba(180,210,255,0.4);
   margin-bottom: 0.3rem;
+}
+
+.site-title-row {
+  position: relative;
+  display: inline-block;
+  margin-top: 0.8rem;
+}
+
+.site-title-row .site-title {
+  margin: 0;
+}
+
+.title-divider {
+  width: min(9.5rem, 34vw);
+  height: 1px;
+  margin-top: 1.1rem;
+  background: linear-gradient(90deg, transparent, rgba(184,212,255,0.34), transparent);
+}
+
+.info-button {
+  position: absolute;
+  left: calc(100% + 0.38rem);
+  top: 0.42rem;
+  width: 1.35rem;
+  height: 1.35rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid rgba(180,210,255,0.42);
+  background: rgba(184,212,255,0.08);
+  color: var(--accent);
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 0 18px rgba(184,212,255,0.08);
+  transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+}
+
+.info-button:hover {
+  color: var(--text);
+  border-color: rgba(210,230,255,0.68);
+  background: rgba(184,212,255,0.16);
+  transform: translateY(-1px);
 }
 
 .site-sub {
@@ -126,13 +177,18 @@ header {
   letter-spacing: 0.2em;
 }
 
+.site-sub.header-link {
+  display: inline-block;
+  color: var(--text-muted);
+}
+
 /* Main layout */
 .container {
   position: relative;
   z-index: 10;
   max-width: 1100px;
   margin: 0 auto;
-  padding: 2rem 1.25rem;
+  padding: 1.25rem 1.25rem 2rem;
 }
 
 /* Filter panel */
@@ -157,13 +213,6 @@ header {
   justify-content: space-between;
   gap: 1rem;
   margin-bottom: 1.125rem;
-}
-
-.filter-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem 1.5rem;
-  align-items: flex-end;
 }
 
 .filter-group {
@@ -778,8 +827,6 @@ header {
   color: var(--gold);
   letter-spacing: 0.05em;
 }
-.modal-layer-sub { font-size: 0.75rem; color: var(--text-muted); }
-
 .modal-body { display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1.5rem; }
 
 .modal-block {
@@ -804,6 +851,118 @@ header {
 .modal-val { font-size: 0.85rem; color: var(--text); }
 
 .modal-footer { display: flex; flex-direction: column; gap: 0.6rem; }
+
+.info-modal {
+  max-width: 560px;
+  max-height: min(680px, calc(100vh - 2rem));
+  overflow: hidden;
+}
+
+.info-tabs {
+  display: flex;
+  gap: 0.55rem;
+  margin: 0 2.2rem 1.1rem 0;
+}
+
+.info-tab {
+  min-width: 5rem;
+  height: 2rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.03);
+  color: var(--text-muted);
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+.info-tab:hover,
+.info-tab.active {
+  color: var(--text);
+  border-color: var(--border-bright);
+  background: rgba(184,212,255,0.12);
+}
+
+.info-panel {
+  display: none;
+}
+.info-panel.active {
+  display: block;
+}
+
+.info-intro {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  line-height: 1.9;
+}
+.info-intro p {
+  margin: 0 0 1rem;
+}
+.info-link-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 1.8rem;
+  padding: 0 0.8rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.03);
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.72rem;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+.info-link-button:hover {
+  color: var(--text);
+  background: rgba(184,212,255,0.1);
+  border-color: var(--border-bright);
+}
+.version-history-list {
+  max-height: min(500px, calc(100vh - 12rem));
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+.version-history-group {
+  padding: 0.95rem 0;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+.version-history-date {
+  color: var(--accent);
+  font-size: 0.76rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.5rem;
+}
+.version-history-items {
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  line-height: 1.75;
+}
+.version-history-items li {
+  position: relative;
+  padding-left: 1rem;
+}
+.version-history-items li::before {
+  content: "";
+  position: absolute;
+  left: 0.15rem;
+  top: 0.88em;
+  width: 0.34rem;
+  height: 0.34rem;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.75;
+  transform: translateY(-50%);
+}
+.version-history-empty {
+  padding: 1.5rem 0;
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  text-align: center;
+}
 
 .btn-fb {
   display: flex;
@@ -846,15 +1005,6 @@ header {
 }
 .btn-report:hover { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.35); }
 
-.no-video-note { font-size: 0.7rem; color: var(--text-dim); text-align: center; }
-
-/* Divider in modal */
-.modal-divider {
-  height: 1px;
-  background: var(--border);
-  margin: 0.1rem 0;
-}
-
 /* ── Tab navigation ── */
 .tab-nav {
   position: relative;
@@ -862,7 +1012,7 @@ header {
   display: flex;
   justify-content: center;
   gap: 0.5rem;
-  padding: 1.25rem 1rem 0;
+  padding: 0.7rem 1rem 0;
   max-width: 1100px;
   margin: 0 auto;
 }
@@ -978,11 +1128,6 @@ header {
 }
 .endless-footer { margin-top: 0.75rem; display: flex; align-items: center; justify-content: space-between; }
 
-.card-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
 .save-card-btn {
   display: inline-flex;
   align-items: center;
@@ -1254,9 +1399,6 @@ select.card-input option {
     gap: 0.625rem;
     margin-top: 1rem;
   }
-  .filter-fields .card-group {
-    grid-column: 1 / -1;
-  }
   .filter-group label { font-size: 0.66rem; letter-spacing: 0.08em; }
   .layer-input,
   .card-input {
@@ -1297,7 +1439,7 @@ select.card-input option {
   .endless-grid { grid-template-columns: 1fr; }
 
   /* tab nav fits smaller screens */
-  .tab-nav { gap: 0.35rem; padding: 1rem 0.75rem 0; }
+  .tab-nav { gap: 0.35rem; padding: 0.65rem 0.75rem 0; }
   .tab-btn { font-size: 0.75rem; padding: 0.4rem 1rem; }
 }
 
@@ -1306,11 +1448,12 @@ select.card-input option {
 <body>
 
 <header>
-   <div class="site-sub">戀與深空戰鬥討論群</div>
-  <div class="site-title" style="margin-top: 0.8rem;">⚔️ 面板資料庫 ⚔️</div>
-  <div class="site-sub" style="margin-top: 0.8rem;">
-    本站收錄「<a href="https://www.facebook.com/share/g/18qcHFWDrj/" target="_blank" rel="noopener" style="color: inherit; text-decoration: underline;">戀與深空戰鬥討論群_臉書面板分享專區</a>」的戰鬥資料，獵人可以在此進行查詢，也歡迎加入前述專區分享、存檔您的通關資料
+  <a class="site-sub header-link" href="https://line.me/ti/g2/gw9Ds6tjgN1mPRRCKbc7pLofd4Wzd1MJoR71eQ" target="_blank" rel="noopener">戀與深空戰鬥討論群</a>
+  <div class="site-title-row">
+    <div class="site-title">面板資料庫</div>
+    <button class="info-button" onclick="openInfoModal()" aria-label="查看資料庫資訊" title="查看資料庫資訊">i</button>
   </div>
+  <div class="title-divider" aria-hidden="true"></div>
 </header>
 
 <!-- Tab navigation -->
@@ -1478,6 +1621,25 @@ select.card-input option {
   </div>
 </div>
 
+<div class="modal-overlay" id="infoOverlay" onclick="closeInfoModal(event)">
+  <div class="modal info-modal">
+    <button class="modal-close" onclick="closeInfoModalDirect()">✕</button>
+    <div class="info-tabs">
+      <button class="info-tab active" data-info-tab="intro" onclick="switchInfoTab('intro')">介紹</button>
+      <button class="info-tab" data-info-tab="history" onclick="switchInfoTab('history')">版本紀錄</button>
+    </div>
+    <div class="info-panel info-intro active" id="infoPanelIntro">
+      <p>本站收錄「戀與深空戰鬥討論群_臉書面板分享專區」的戰鬥資料，包含開放穩定軌道、開放波動軌道、定向軌道及無盡挑戰等，獵人可以在此進行查詢，也歡迎加入專區分享、存檔您的通關資料</p>
+      <a class="info-link-button" href="https://www.facebook.com/share/g/18qcHFWDrj/" target="_blank" rel="noopener">前往分享專區</a>
+    </div>
+    <div class="info-panel" id="infoPanelHistory">
+      <div class="version-history-list" id="versionHistoryList">
+        <div class="version-history-empty">版本紀錄載入中…</div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 
 // Parse data
@@ -1495,6 +1657,9 @@ let currentData = [];
 let activeLayerFilters = { upper: [], lower: [] };
 let activeFolderTab = 'favorites';
 let localFolder = { favorites: [], history: [] };
+let CHANGELOG_DATA = [];
+let changelogLoaded = false;
+let changelogLoadError = false;
 const LOCAL_FOLDER_KEY = 'ladsbattle_local_folder_v1';
 
 function loadingMarkup() {
@@ -1518,9 +1683,9 @@ function formatTaipeiDateTime(value) {
 }
 
 function parseCSV(text) {
-  const lines = text.trim().split('\n');
+  const lines = text.trim().split(/\r?\n/);
   return lines.slice(1).map(line => {
-    const cols = line.split(',');
+    const cols = parseCsvLine(line);
     return {
       orbit: cols[0]?.trim(), layer: parseInt(cols[1]),
       upperCard: cols[2]?.trim(), upperPartner: cols[3]?.trim(), upperDir: cols[4]?.trim(),
@@ -1531,9 +1696,9 @@ function parseCSV(text) {
 }
 
 function parseEndlessCSV(text) {
-  const lines = text.trim().split('\n');
+  const lines = text.trim().split(/\r?\n/);
   return lines.slice(1).map(line => {
-    const cols = line.split(',');
+    const cols = parseCsvLine(line);
     return {
       partner: cols[0]?.trim(),
       card:    cols[1]?.trim(),
@@ -1545,11 +1710,50 @@ function parseEndlessCSV(text) {
   }).filter(d => d.partner);
 }
 
+function parseCsvLine(line) {
+  const cells = [];
+  let cell = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    const next = line[i + 1];
+    if (char === '"' && inQuotes && next === '"') {
+      cell += '"';
+      i++;
+    } else if (char === '"') {
+      inQuotes = !inQuotes;
+    } else if (char === ',' && !inQuotes) {
+      cells.push(cell);
+      cell = '';
+    } else {
+      cell += char;
+    }
+  }
+  cells.push(cell);
+  return cells.map(value => value.trim());
+}
+
+function parseChangelogCSV(text) {
+  const lines = text.trim().split(/\r?\n/).filter(Boolean);
+  if (lines.length <= 1) return [];
+  const headers = parseCsvLine(lines[0]).map(header => header.toLowerCase());
+  const dateIndex = headers.indexOf('date');
+  const noteIndex = headers.indexOf('note');
+  return lines.slice(1).map(line => {
+    const cols = parseCsvLine(line);
+    return {
+      date: cols[dateIndex]?.trim(),
+      note: cols[noteIndex]?.trim()
+    };
+  }).filter(item => item.date && item.note);
+}
+
 async function init() {
   loadLocalFolder();
   renderFolderPanel();
   const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTfNvGSQbmwwXodVzmhuZfOAGIIE634hWTA6V1CTaQlF272v3VRJ5t_F7OfSKPH0qbBQbUSvLlQnw3x/pub?output=csv';
   const ENDLESS_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTfNvGSQbmwwXodVzmhuZfOAGIIE634hWTA6V1CTaQlF272v3VRJ5t_F7OfSKPH0qbBQbUSvLlQnw3x/pub?gid=1577067344&single=true&output=csv';
+  const CHANGELOG_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTfNvGSQbmwwXodVzmhuZfOAGIIE634hWTA6V1CTaQlF272v3VRJ5t_F7OfSKPH0qbBQbUSvLlQnw3x/pub?gid=1820828638&single=true&output=csv';
 
   // fetch last updated
   const SHEET_FILE_ID = '19RqMAlpyi1g9pXyJ1azm45pxfjvxRqxJOUCdsQpHKDo';
@@ -1592,6 +1796,18 @@ async function init() {
   } catch (err) {
     document.getElementById('endlessInfo').innerHTML = '⚠ 資料載入失敗，請重新整理頁面';
     console.error(err);
+  }
+
+  try {
+    const res = await fetch(CHANGELOG_CSV_URL);
+    const text = await res.text();
+    CHANGELOG_DATA = parseChangelogCSV(text);
+    changelogLoaded = true;
+    renderVersionHistory();
+  } catch (err) {
+    changelogLoadError = true;
+    renderVersionHistory();
+    console.error('Maintenance history fetch failed:', err);
   }
 }
 
@@ -1717,12 +1933,21 @@ function isDynamicFilterActive(side, option) {
 }
 
 function escapeHtml(value) {
-  return String(value)
+  return String(value ?? '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
+}
+
+function safeExternalUrl(value) {
+  try {
+    const url = new URL(String(value || ''), location.href);
+    return url.protocol === 'http:' || url.protocol === 'https:' ? url.href : '#';
+  } catch (err) {
+    return '#';
+  }
 }
 
 function loadLocalFolder() {
@@ -1866,7 +2091,7 @@ function favoriteButton(item) {
 
 function reportButton(reportUrl) {
   return `
-    <a href="${reportUrl}" target="_blank" rel="noopener" class="btn-report">
+    <a href="${escapeHtml(safeExternalUrl(reportUrl))}" target="_blank" rel="noopener" class="btn-report">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M12 3 22 20H2L12 3z"/>
         <path d="M12 9v5"/>
@@ -1874,6 +2099,65 @@ function reportButton(reportUrl) {
       </svg>
       回報
     </a>`;
+}
+
+function groupChangelogByDate(items) {
+  const sortedItems = items
+    .map((item, index) => ({ ...item, index }))
+    .sort((a, b) => b.date.localeCompare(a.date) || a.index - b.index);
+  const groups = new Map();
+  sortedItems.forEach(item => {
+    if (!groups.has(item.date)) groups.set(item.date, []);
+    groups.get(item.date).push(item.note);
+  });
+  return [...groups.entries()].map(([date, notes]) => ({ date, notes }));
+}
+
+function renderVersionHistory() {
+  const list = document.getElementById('versionHistoryList');
+  if (!list) return;
+  if (changelogLoadError) {
+    list.innerHTML = '<div class="version-history-empty">版本紀錄載入失敗，請稍後再試。</div>';
+    return;
+  }
+  if (!changelogLoaded) {
+    list.innerHTML = `<div class="version-history-empty">${loadingMarkup()}</div>`;
+    return;
+  }
+  if (CHANGELOG_DATA.length === 0) {
+    list.innerHTML = '<div class="version-history-empty">目前尚無版本紀錄。</div>';
+    return;
+  }
+  list.innerHTML = groupChangelogByDate(CHANGELOG_DATA).map(group => `
+    <div class="version-history-group">
+      <div class="version-history-date">${escapeHtml(group.date)}</div>
+      <ul class="version-history-items">
+        ${group.notes.map(note => `<li>${escapeHtml(note)}</li>`).join('')}
+      </ul>
+    </div>
+  `).join('');
+}
+
+function switchInfoTab(tab) {
+  document.querySelectorAll('.info-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.infoTab === tab);
+  });
+  document.getElementById('infoPanelIntro')?.classList.toggle('active', tab === 'intro');
+  document.getElementById('infoPanelHistory')?.classList.toggle('active', tab === 'history');
+  if (tab === 'history') renderVersionHistory();
+}
+
+function openInfoModal(tab = 'intro') {
+  switchInfoTab(tab);
+  document.getElementById('infoOverlay')?.classList.add('show');
+}
+
+function closeInfoModal(e) {
+  if (e.target === document.getElementById('infoOverlay')) closeInfoModalDirect();
+}
+
+function closeInfoModalDirect() {
+  document.getElementById('infoOverlay')?.classList.remove('show');
 }
 
 function toggleFolderPanel() {
@@ -1919,7 +2203,7 @@ function openFolderItemFromButton(btn) {
     }
   }
   closeFolderPanel();
-  window.open(item.link, '_blank', 'noopener');
+  window.open(safeExternalUrl(item.link), '_blank', 'noopener');
 }
 
 function renderFolderPanel() {
@@ -2044,14 +2328,15 @@ function resetFilters() {
 }
 
 function cardLayerBlock(card, partner, dir, label) {
-  if (card === 'N/A') return `<div class="layer-block"><div class="layer-label">${label}</div><div class="layer-info"><span class="na-text">單層面板</span></div></div>`;
-  const dirHtml = (dir && dir !== 'N/A')
-    ? `<span class="dir-tag dir-${dir}" style="margin-left:auto">${dir}譜</span>`
+  if (card === 'N/A') return `<div class="layer-block"><div class="layer-label">${escapeHtml(label)}</div><div class="layer-info"><span class="na-text">單層面板</span></div></div>`;
+  const safeDir = dir === '順' || dir === '逆' ? dir : '';
+  const dirHtml = safeDir
+    ? `<span class="dir-tag dir-${safeDir}" style="margin-left:auto">${safeDir}譜</span>`
     : '';
   return `<div class="layer-block">
-    <div class="layer-label">${label}</div>
+    <div class="layer-label">${escapeHtml(label)}</div>
     <div class="layer-info">
-      <div><div class="card-name">${card}</div><div class="partner-name">${partner}</div></div>
+      <div><div class="card-name">${escapeHtml(card)}</div><div class="partner-name">${escapeHtml(partner)}</div></div>
       ${dirHtml}
     </div>
   </div>`;
@@ -2065,11 +2350,14 @@ function renderCards() {
     updateScrollButtons();
     return;
   }
-  grid.innerHTML = currentData.map((d, i) => `
-    <div class="panel-card" data-orbit="${d.orbit}" onclick="openModal(${i})">
+  grid.innerHTML = currentData.map((d, i) => {
+    const orbit = escapeHtml(d.orbit);
+    const orbitLabel = escapeHtml(ORBIT_LABEL[d.orbit] || d.orbit);
+    return `
+    <div class="panel-card" data-orbit="${orbit}" onclick="openModal(${i})">
       <div class="card-orbit-bar">
         <div class="card-labels">
-          <span class="orbit-badge" data-orbit="${d.orbit}">${ORBIT_LABEL[d.orbit] || d.orbit}</span>
+          <span class="orbit-badge" data-orbit="${orbit}">${orbitLabel}</span>
           ${d.hasVideo ? '<span class="video-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg> 附影片</span>' : ''}
         </div>
         <div class="card-meta-right">
@@ -2084,20 +2372,22 @@ function renderCards() {
         <span></span>
         <span class="link-hint">點擊查看詳情 →</span>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
   updateScrollButtons();
 }
 
 function dirTag(dir) {
   if (!dir || dir === 'N/A') return '<span class="dir-tag dir-na">—</span>';
-  return `<span class="dir-tag dir-${dir}">${dir}</span>`;
+  const safeDir = dir === '順' || dir === '逆' ? dir : '';
+  return safeDir ? `<span class="dir-tag dir-${safeDir}">${safeDir}</span>` : '<span class="dir-tag dir-na">—</span>';
 }
 
 function modalBlock(card, partner, dir) {
   if (card === 'N/A') return '<div class="modal-row"><span class="na-text" style="color:var(--text-dim)">單層面板（無此層配置）</span></div>';
   const dirText = dir === '順' ? '順譜' : dir === '逆' ? '逆譜' : '—';
-  return `<div class="modal-row"><span class="modal-label">日卡</span><span class="modal-val">${card}</span></div>
-    <div class="modal-row"><span class="modal-label">搭檔</span><span class="modal-val">${partner}</span></div>
+  return `<div class="modal-row"><span class="modal-label">日卡</span><span class="modal-val">${escapeHtml(card)}</span></div>
+    <div class="modal-row"><span class="modal-label">搭檔</span><span class="modal-val">${escapeHtml(partner)}</span></div>
     <div class="modal-row"><span class="modal-label">對譜情形</span><span class="modal-val">${dirText}</span></div>`;
 }
 
@@ -2110,7 +2400,7 @@ function openPanelDetail(d, recordHistory = true) {
   document.getElementById('mUpperBlock').insertAdjacentHTML('afterbegin', '<div class="modal-block-title">▲ 上層</div>');
   document.getElementById('mLowerBlock').insertAdjacentHTML('afterbegin', '<div class="modal-block-title">▼ 下層</div>');
 
-  document.getElementById('mOrbit').innerHTML = `<span class="orbit-badge" data-orbit="${d.orbit}">${ORBIT_LABEL[d.orbit] || d.orbit}軌道</span>`;
+  document.getElementById('mOrbit').innerHTML = `<span class="orbit-badge" data-orbit="${escapeHtml(d.orbit)}">${escapeHtml(ORBIT_LABEL[d.orbit] || d.orbit)}軌道</span>`;
   document.getElementById('mLayer').textContent = d.layer;
 const orbitColors = {
   開放: 'var(--col-open)', 光: 'var(--col-light)', 冰: 'var(--col-ice)',
@@ -2126,7 +2416,7 @@ document.getElementById('mLayer').style.color = orbitColors[d.orbit] || 'var(--t
 
   document.getElementById('mActions').innerHTML = favoriteButton(folderItem) + reportButton(reportUrl);
   document.getElementById('mFooter').innerHTML = `
-    <a href="${d.link}" target="_blank" rel="noopener" class="btn-fb">
+    <a href="${escapeHtml(safeExternalUrl(d.link))}" target="_blank" rel="noopener" class="btn-fb">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
       前往Facebook查看
     </a>`;
@@ -2220,7 +2510,7 @@ function resetEndlessFilters() {
 }
 
 function fmtScore(s) {
-  const n = parseInt(s);
+  const n = parseInt(String(s).replace(/,/g, ''), 10);
   if (isNaN(n)) return s;
   return n.toLocaleString();
 }
@@ -2234,30 +2524,35 @@ function renderEndless() {
     updateScrollButtons();
     return;
   }
-  grid.innerHTML = ENDLESS_DATA.map((d, i) => `
-    <div class="endless-card" data-partner="${d.partner}" onclick="openEndlessModal(${i})">
+  grid.innerHTML = ENDLESS_DATA.map((d, i) => {
+    const partner = escapeHtml(d.partner);
+    const card = escapeHtml(d.card);
+    const combo = escapeHtml(d.combo);
+    return `
+    <div class="endless-card" data-partner="${partner}" onclick="openEndlessModal(${i})">
       <div class="endless-card-header">
         <div class="card-labels">
-          <span class="partner-badge" data-partner="${d.partner}">${d.partner}</span>
+          <span class="partner-badge" data-partner="${partner}">${partner}</span>
           ${d.hasVideo ? '<span class="video-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg> 附影片</span>' : ''}
         </div>
         <div class="card-meta-right">
-          <span class="endless-score">${fmtScore(d.score)} 分</span>
+          <span class="endless-score">${escapeHtml(fmtScore(d.score))} 分</span>
         </div>
       </div>
       <div class="endless-info-row">
         <span class="endless-info-label">日卡</span>
-        <span class="endless-info-val">${d.card}</span>
+        <span class="endless-info-val">${card}</span>
       </div>
       <div class="endless-info-row">
         <span class="endless-info-label">對譜數</span>
-        <span class="combo-tag">${d.combo} 譜</span>
+        <span class="combo-tag">${combo} 譜</span>
       </div>
       <div class="endless-footer">
         <span></span>
         <span class="link-hint">點擊查看詳情 →</span>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
   updateScrollButtons();
 }
 
@@ -2268,19 +2563,19 @@ function openEndlessDetail(d, recordHistory = true) {
   document.getElementById('mUpperBlock').querySelector('.modal-block-title') && document.getElementById('mUpperBlock').querySelector('.modal-block-title').remove();
   document.getElementById('mLowerBlock').querySelector('.modal-block-title') && document.getElementById('mLowerBlock').querySelector('.modal-block-title').remove();
 
-  document.getElementById('mOrbit').innerHTML = `<span class="partner-badge" data-partner="${d.partner}">${d.partner}</span>`;
+  document.getElementById('mOrbit').innerHTML = `<span class="partner-badge" data-partner="${escapeHtml(d.partner)}">${escapeHtml(d.partner)}</span>`;
   document.getElementById('mLayer').textContent = fmtScore(d.score) + ' 分';
   document.getElementById('mLayer').style.color = 'var(--text)';
   document.getElementById('mUpperContent').innerHTML = `
-    <div class="modal-row"><span class="modal-label">日卡</span><span class="modal-val">${d.card}</span></div>
-    <div class="modal-row"><span class="modal-label">對譜數</span><span class="modal-val">${d.combo} 譜</span></div>`;
+    <div class="modal-row"><span class="modal-label">日卡</span><span class="modal-val">${escapeHtml(d.card)}</span></div>
+    <div class="modal-row"><span class="modal-label">對譜數</span><span class="modal-val">${escapeHtml(d.combo)} 譜</span></div>`;
   document.getElementById('mLowerBlock').style.display = 'none';
 
   const reportUrl = `https://docs.google.com/forms/d/e/1FAIpQLSdP6bWGJ6GFkyOZ7dWsqDbiup7KzTyJGxw9Feta-EqCS3pG6w/viewform?usp=pp_url&entry.1527588954=${encodeURIComponent(d.partner)}&entry.1242930374=${encodeURIComponent(d.link)}`;
 
   document.getElementById('mActions').innerHTML = favoriteButton(folderItem) + reportButton(reportUrl);
   document.getElementById('mFooter').innerHTML = `
-    <a href="${d.link}" target="_blank" rel="noopener" class="btn-fb">
+    <a href="${escapeHtml(safeExternalUrl(d.link))}" target="_blank" rel="noopener" class="btn-fb">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
       前往Facebook查看
     </a>`;
@@ -2296,7 +2591,12 @@ function closeModalDirect() {
   document.getElementById('modalOverlay').classList.remove('show');
   document.getElementById('mLowerBlock').style.display = '';
 }
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModalDirect(); });
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    closeModalDirect();
+    closeInfoModalDirect();
+  }
+});
 
 function scrollToTop() {
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -2335,11 +2635,11 @@ updateScrollButtons();
 
 <footer class="site-footer">
   This website belongs to 
-  <a href="https://line.me/ti/g2/gw9Ds6tjgN1mPRRCKbc7pLofd4Wzd1MJoR71eQ" target="_blank">
+  <a href="https://line.me/ti/g2/gw9Ds6tjgN1mPRRCKbc7pLofd4Wzd1MJoR71eQ" target="_blank" rel="noopener">
     戀與深空戰鬥討論群
   </a>
   , created by 
-  <a href="https://www.threads.com/@tingtingwang_tw" target="_blank">
+  <a href="https://www.threads.com/@tingtingwang_tw" target="_blank" rel="noopener">
     Ting Ting Wang
   </a>
   <div id="lastUpdated"></div>
