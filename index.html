@@ -331,6 +331,15 @@ header {
 .layer-input:focus { border-color: var(--accent); }
 .layer-input::placeholder { color: var(--text-dim); }
 .layer-input.error-input { border-color: #f87171; }
+.layer-input:disabled {
+  cursor: not-allowed;
+  opacity: 1;
+  background: rgba(17,30,53,0.55);
+  color: var(--text-dim);
+}
+.layer-input:disabled::placeholder {
+  color: rgba(176,200,232,0.76);
+}
 .layer-error-msg {
   display: none;
   font-size: 0.68rem;
@@ -462,7 +471,10 @@ header {
   padding-top: 1rem;
   border-top: 1px solid var(--border);
 }
-.dynamic-filter-panel.show { display: block; }
+.dynamic-filter-panel.show {
+  display: block;
+  animation: sectionFadeIn 0.2s ease both;
+}
 .dynamic-filter-header {
   display: flex;
   align-items: center;
@@ -543,6 +555,13 @@ header {
   letter-spacing: 0.05em;
 }
 .results-info span { color: var(--accent); }
+.content-transition {
+  opacity: 1;
+  transition: opacity 0.18s ease;
+}
+.content-transition.is-fading {
+  opacity: 0;
+}
 .loading-inline {
   display: inline-flex;
   align-items: center;
@@ -573,6 +592,49 @@ header {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
   gap: 1rem;
+}
+
+.panel-preview {
+  grid-column: 1 / -1;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(15,26,46,0.62);
+  padding: 1rem 0;
+}
+.panel-preview-viewport {
+  overflow-x: auto;
+  overflow-y: hidden;
+  cursor: grab;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
+}
+.panel-preview-viewport::-webkit-scrollbar {
+  display: none;
+}
+.panel-preview-track {
+  display: flex;
+  width: max-content;
+  gap: 1rem;
+  will-change: transform;
+}
+.panel-preview .panel-card {
+  width: 320px;
+  flex: 0 0 320px;
+}
+.panel-preview .endless-card {
+  width: 300px;
+  flex: 0 0 300px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel-preview-viewport {
+    overflow-x: auto;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
 }
 
 /* Card */
@@ -1047,7 +1109,14 @@ header {
 
 /* ── Section visibility ── */
 .section { display: none; }
-.section.active { display: block; }
+.section.active {
+  display: block;
+  animation: sectionFadeIn 0.2s ease both;
+}
+@keyframes sectionFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
 
 /* ── Endless challenge cards ── */
 .endless-filter-panel {
@@ -1360,10 +1429,26 @@ select.card-input option {
 }
 .back-to-top { bottom: 4.25rem; }
 .back-to-bottom { bottom: 1.25rem; }
+.back-to-top,
+.back-to-bottom {
+  width: 2.35rem;
+  height: 2.35rem;
+  justify-content: center;
+  gap: 0;
+  padding: 0;
+  border-color: rgba(184,212,255,0.28);
+  background: rgba(13,21,38,0.64);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.24);
+}
 .back-to-top.show, .back-to-bottom.show { opacity: 1; visibility: visible; transform: translateY(0); }
 .folder-toggle:hover { border-color: rgba(15,35,70,0.52); background: rgba(224,235,246,0.72); color: #0f2346; }
-.back-to-top:hover, .back-to-bottom:hover { border-color: var(--accent); background: rgba(13,21,38,0.96); }
+.back-to-top:hover, .back-to-bottom:hover { border-color: rgba(184,212,255,0.58); background: rgba(13,21,38,0.82); }
 .folder-toggle svg, .back-to-top svg, .back-to-bottom svg { width: 14px; height: 14px; flex-shrink: 0; }
+.back-to-top svg,
+.back-to-bottom svg {
+  width: 16px;
+  height: 16px;
+}
 
 @media (max-width: 600px) {
   .local-folder-panel {
@@ -1373,8 +1458,8 @@ select.card-input option {
     max-height: calc(100vh - 7rem);
   }
   .folder-toggle { right: 1rem; top: 1rem; bottom: auto; width: 2.25rem; height: 2.25rem; padding: 0; font-size: 0.72rem; }
-  .back-to-top { right: 1rem; bottom: 3.6rem; padding: 0.5rem 0.85rem; font-size: 0.72rem; }
-  .back-to-bottom { right: 1rem; bottom: 1rem; padding: 0.5rem 0.85rem; font-size: 0.72rem; }
+  .back-to-top { right: 1rem; bottom: 3.45rem; width: 2rem; height: 2rem; padding: 0; }
+  .back-to-bottom { right: 1rem; bottom: 1rem; width: 2rem; height: 2rem; padding: 0; }
 
   .filter-panel { padding: 1rem; }
   .filter-header { margin-bottom: 0.875rem; }
@@ -1415,6 +1500,39 @@ select.card-input option {
     padding: 0.5rem 0.625rem;
     font-size: 0.75rem;
   }
+  .ios-input-shell {
+    width: 100%;
+    height: 2rem;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg3);
+    transition: border-color 0.2s;
+  }
+  .ios-input-shell:focus-within {
+    border-color: var(--accent);
+  }
+  .ios-input-shell:has(.layer-input.error-input) {
+    border-color: #f87171;
+  }
+  .ios-input-shell:has(.layer-input:disabled) {
+    border-color: rgba(150,180,240,0.16);
+    background: rgba(17,30,53,0.45);
+  }
+  .ios-input-shell .layer-input {
+    width: 133.333%;
+    height: 2.667rem;
+    padding: 0.667rem 0.833rem;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    font-size: 16px;
+    transform: scale(0.75);
+    transform-origin: left top;
+  }
+  .ios-input-shell .layer-input:focus {
+    border-color: transparent;
+  }
   .video-toggle {
     height: 2rem;
     padding: 0.5rem 0.625rem;
@@ -1445,6 +1563,21 @@ select.card-input option {
     width: 100%;
   }
   .cards-grid { grid-template-columns: 1fr; }
+  .panel-preview {
+    border-radius: 10px;
+    padding: 0.8rem 0;
+  }
+  .panel-preview-track {
+    gap: 0.75rem;
+  }
+  .panel-preview .panel-card {
+    width: min(78vw, 300px);
+    flex-basis: min(78vw, 300px);
+  }
+  .panel-preview .endless-card {
+    width: min(78vw, 290px);
+    flex-basis: min(78vw, 290px);
+  }
   .endless-grid { grid-template-columns: 1fr; }
 
   /* tab nav fits smaller screens */
@@ -1505,7 +1638,9 @@ select.card-input option {
     <div class="filter-fields panel-filter-fields">
       <div class="filter-group layer-group">
         <label>軌道層數</label>
-        <input class="layer-input" type="number" id="layerInput" placeholder="輸入層數" min="1" oninput="onLayerInput()">
+        <div class="ios-input-shell">
+          <input class="layer-input" type="number" id="layerInput" placeholder="請先選擇軌道" min="1" oninput="onLayerInput()" disabled>
+        </div>
         <div class="layer-error-msg" id="layerError">輸入內容無效</div>
       </div>
 
@@ -1664,6 +1799,14 @@ let activeEndlessCard = null;
 let layerOK = true;
 let currentData = [];
 let activeLayerFilters = { upper: [], lower: [] };
+let panelPreviewData = [];
+let endlessPreviewData = [];
+let previewAutoFrame = null;
+let previewLastTime = 0;
+const PANEL_PREVIEW_SPEED = 0.075;
+const CONTENT_FADE_MS = 150;
+const fadeTimers = {};
+let tabFadeTimer = null;
 let activeFolderTab = 'favorites';
 let localFolder = { favorites: [], history: [] };
 let CHANGELOG_DATA = [];
@@ -1673,6 +1816,23 @@ const LOCAL_FOLDER_KEY = 'ladsbattle_local_folder_v1';
 
 function loadingMarkup() {
   return '<span class="loading-inline"><span class="loading-spinner"></span><span class="loading-text">資料載入中…</span></span>';
+}
+
+function fadeSwap(key, elements, update, afterUpdate) {
+  const targets = elements.filter(Boolean);
+  if (fadeTimers[key]) window.clearTimeout(fadeTimers[key]);
+  targets.forEach(el => {
+    el.classList.add('content-transition');
+    el.classList.add('is-fading');
+  });
+  fadeTimers[key] = window.setTimeout(() => {
+    update();
+    window.requestAnimationFrame(() => {
+      targets.forEach(el => el.classList.remove('is-fading'));
+      if (afterUpdate) afterUpdate();
+    });
+    fadeTimers[key] = null;
+  }, CONTENT_FADE_MS);
 }
 
 function formatTaipeiDateTime(value) {
@@ -1775,6 +1935,7 @@ async function init() {
     const res = await fetch(CSV_URL);
     const text = await res.text();
     DATA = parseCSV(text);
+    panelPreviewData = samplePanelPreviewData();
     applyFilters();
   } catch (err) {
     document.getElementById('resultsInfo').innerHTML = '⚠ 資料載入失敗，請重新整理頁面';
@@ -1800,6 +1961,7 @@ async function init() {
     const text = await res.text();
     ENDLESS_ALL = parseEndlessCSV(text);
     ENDLESS_DATA = [...ENDLESS_ALL];
+    endlessPreviewData = sampleEndlessPreviewData();
     activePartner = null;
     applyEndlessFilters();
   } catch (err) {
@@ -1823,6 +1985,7 @@ async function init() {
 function selectOrbit(btn) {
   const orbit = btn.dataset.orbit;
   activeLayerFilters = { upper: [], lower: [] };
+  clearLayerInput();
   if (activeOrbit === orbit) {
     activeOrbit = null;
     btn.classList.remove('active');
@@ -1831,7 +1994,27 @@ function selectOrbit(btn) {
     activeOrbit = orbit;
     btn.classList.add('active');
   }
+  updateLayerInputState();
   validateLayer();
+}
+
+function clearLayerInput() {
+  const inp = document.getElementById('layerInput');
+  const errEl = document.getElementById('layerError');
+  if (inp) {
+    inp.value = '';
+    inp.classList.remove('error-input');
+  }
+  if (errEl) errEl.classList.remove('show');
+  layerOK = true;
+}
+
+function updateLayerInputState() {
+  const inp = document.getElementById('layerInput');
+  if (!inp) return;
+  const locked = !activeOrbit;
+  inp.disabled = locked;
+  inp.placeholder = locked ? '請先選擇軌道' : '輸入層數';
 }
 
 function validateLayer() {
@@ -2315,6 +2498,16 @@ function applyFilters() {
   const layerVal = document.getElementById('layerInput').value.trim();
   const layerNum = layerVal !== '' ? parseInt(layerVal) : null;
   const videoOnly = document.getElementById('videoOnly').checked;
+  const shouldSearch = Boolean(activeOrbit || videoOnly);
+  if (!shouldSearch) {
+    activeLayerFilters = { upper: [], lower: [] };
+    currentData = [...DATA];
+    const noMatch = document.getElementById('dynamicNoMatch');
+    if (noMatch) noMatch.classList.remove('show');
+    renderDynamicFilters([], null);
+    renderCards();
+    return;
+  }
   const baseData = getBasePanelData(layerNum, videoOnly);
   renderDynamicFilters(baseData, layerNum);
   currentData = baseData.filter(d => matchesLayerFilters(d, 'upper') && matchesLayerFilters(d, 'lower'));
@@ -2328,12 +2521,194 @@ function resetFilters() {
   activeOrbit = null;
   activeLayerFilters = { upper: [], lower: [] };
   document.querySelectorAll('#orbitChips .chip').forEach(c => c.classList.remove('active'));
-  document.getElementById('layerInput').value = '';
-  document.getElementById('layerInput').classList.remove('error-input');
-  document.getElementById('layerError').classList.remove('show');
+  clearLayerInput();
+  updateLayerInputState();
   document.getElementById('videoOnly').checked = false;
-  layerOK = true;
   applyFilters();
+}
+
+function samplePanelPreviewData(count = 10) {
+  const pool = [...DATA];
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  return pool.slice(0, Math.min(count, pool.length));
+}
+
+function sampleEndlessPreviewData(count = 10) {
+  const pool = [...ENDLESS_ALL];
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  return pool.slice(0, Math.min(count, pool.length));
+}
+
+function getPanelPreviewData() {
+  if (panelPreviewData.length === 0 && DATA.length > 0) {
+    panelPreviewData = samplePanelPreviewData();
+  }
+  return panelPreviewData;
+}
+
+function getEndlessPreviewData() {
+  if (endlessPreviewData.length === 0 && ENDLESS_ALL.length > 0) {
+    endlessPreviewData = sampleEndlessPreviewData();
+  }
+  return endlessPreviewData;
+}
+
+function hasPanelFilters() {
+  const videoOnly = document.getElementById('videoOnly');
+  return Boolean(
+    activeOrbit ||
+    (videoOnly && videoOnly.checked) ||
+    activeLayerFilters.upper.length > 0 ||
+    activeLayerFilters.lower.length > 0
+  );
+}
+
+function panelCardMarkup(d, action) {
+  const orbit = escapeHtml(d.orbit);
+  const orbitLabel = escapeHtml(ORBIT_LABEL[d.orbit] || d.orbit);
+  return `
+    <div class="panel-card" data-orbit="${orbit}" onclick="${action}">
+      <div class="card-orbit-bar">
+        <div class="card-labels">
+          <span class="orbit-badge" data-orbit="${orbit}">${orbitLabel}</span>
+          ${d.hasVideo ? '<span class="video-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg> 附影片</span>' : ''}
+        </div>
+        <div class="card-meta-right">
+          <span class="layer-num">${d.layer} 層</span>
+        </div>
+      </div>
+      <div class="layer-section">
+        ${cardLayerBlock(d.upperCard, d.upperPartner, d.upperDir, '▲ 上層')}
+        ${cardLayerBlock(d.lowerCard, d.lowerPartner, d.lowerDir, '▼ 下層')}
+      </div>
+      <div class="card-footer">
+        <span></span>
+        <span class="link-hint">點擊查看詳情 →</span>
+      </div>
+    </div>`;
+}
+
+function openPanelPreview(idx) {
+  const item = panelPreviewData[idx];
+  if (item) openPanelDetail(item);
+}
+
+function openEndlessPreview(idx) {
+  const item = endlessPreviewData[idx];
+  if (item) openEndlessDetail(item);
+}
+
+function renderPanelPreview() {
+  const grid = document.getElementById('cardsGrid');
+  const previewData = getPanelPreviewData();
+  if (previewData.length === 0) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><p>目前尚無軌道資料</p></div>`;
+    updateScrollButtons();
+    return;
+  }
+  const loopData = previewData.length > 1 ? [...previewData, ...previewData, ...previewData] : previewData;
+  grid.innerHTML = `
+    <div class="panel-preview">
+      <div class="panel-preview-viewport">
+        <div class="panel-preview-track">
+          ${loopData.map((d, i) => panelCardMarkup(d, `openPanelPreview(${i % previewData.length})`)).join('')}
+        </div>
+      </div>
+    </div>`;
+  setupPreviewScroll('#section-panel.active .panel-preview-viewport', previewData.length);
+  updateScrollButtons();
+}
+
+function stopPreviewAutoScroll() {
+  if (!previewAutoFrame) return;
+  window.cancelAnimationFrame(previewAutoFrame);
+  previewAutoFrame = null;
+}
+
+function setupPreviewScroll(selector, itemCount) {
+  const viewport = document.querySelector(selector);
+  if (!viewport) return;
+  let startX = 0;
+  let startScrollLeft = 0;
+  let isMouseDragging = false;
+  let moved = false;
+  let wrapping = false;
+
+  stopPreviewAutoScroll();
+
+  const getLoopWidth = () => viewport.scrollWidth / 3;
+
+  const wrapScrollPosition = () => {
+    if (wrapping || itemCount <= 1) return;
+    const loopWidth = getLoopWidth();
+    if (!loopWidth) return;
+    wrapping = true;
+    if (viewport.scrollLeft < loopWidth * 0.5) {
+      viewport.scrollLeft += loopWidth;
+    } else if (viewport.scrollLeft > loopWidth * 1.5) {
+      viewport.scrollLeft -= loopWidth;
+    }
+    wrapping = false;
+  };
+
+  viewport.addEventListener('pointerdown', event => {
+    if (event.pointerType !== 'mouse') return;
+    isMouseDragging = true;
+    moved = false;
+    startX = event.clientX;
+    startScrollLeft = viewport.scrollLeft;
+    viewport.setPointerCapture(event.pointerId);
+  });
+
+  viewport.addEventListener('pointermove', event => {
+    if (!isMouseDragging || event.pointerType !== 'mouse' || !viewport.hasPointerCapture(event.pointerId)) return;
+    const delta = event.clientX - startX;
+    if (Math.abs(delta) > 4) moved = true;
+    viewport.scrollLeft = startScrollLeft - delta;
+    wrapScrollPosition();
+  });
+
+  viewport.addEventListener('pointerup', event => {
+    if (event.pointerType !== 'mouse') return;
+    isMouseDragging = false;
+    if (event.pointerType === 'mouse' && viewport.hasPointerCapture(event.pointerId)) {
+      viewport.releasePointerCapture(event.pointerId);
+    }
+  });
+
+  viewport.addEventListener('pointercancel', event => {
+    if (event.pointerType !== 'mouse') return;
+    isMouseDragging = false;
+  });
+  viewport.addEventListener('scroll', wrapScrollPosition, { passive: true });
+  viewport.addEventListener('click', event => {
+    if (!moved) return;
+    event.preventDefault();
+    event.stopPropagation();
+    moved = false;
+  }, true);
+
+  requestAnimationFrame(() => {
+    if (itemCount <= 1) return;
+    viewport.scrollLeft = getLoopWidth();
+    previewLastTime = performance.now();
+    const autoScroll = time => {
+      const elapsed = Math.min(time - previewLastTime, 80);
+      previewLastTime = time;
+      if (!document.hidden) {
+        viewport.scrollLeft += elapsed * PANEL_PREVIEW_SPEED;
+        wrapScrollPosition();
+      }
+      previewAutoFrame = window.requestAnimationFrame(autoScroll);
+    };
+    previewAutoFrame = window.requestAnimationFrame(autoScroll);
+  });
 }
 
 function cardLayerBlock(card, partner, dir, label) {
@@ -2353,37 +2728,24 @@ function cardLayerBlock(card, partner, dir, label) {
 
 function renderCards() {
   const grid = document.getElementById('cardsGrid');
-  document.getElementById('resultsInfo').innerHTML = `共找到 <span>${currentData.length}</span> 筆結果`;
-  if (currentData.length === 0) {
-    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div style="font-size:2rem;margin-bottom:0.5rem;opacity:0.3">😣</div><p>找不到符合條件的結果，期待您成為第一位分享者✨</p></div>`;
-    updateScrollButtons();
-    return;
-  }
-  grid.innerHTML = currentData.map((d, i) => {
-    const orbit = escapeHtml(d.orbit);
-    const orbitLabel = escapeHtml(ORBIT_LABEL[d.orbit] || d.orbit);
-    return `
-    <div class="panel-card" data-orbit="${orbit}" onclick="openModal(${i})">
-      <div class="card-orbit-bar">
-        <div class="card-labels">
-          <span class="orbit-badge" data-orbit="${orbit}">${orbitLabel}</span>
-          ${d.hasVideo ? '<span class="video-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg> 附影片</span>' : ''}
-        </div>
-        <div class="card-meta-right">
-          <span class="layer-num">${d.layer} 層</span>
-        </div>
-      </div>
-      <div class="layer-section">
-        ${cardLayerBlock(d.upperCard, d.upperPartner, d.upperDir, '▲ 上層')}
-        ${cardLayerBlock(d.lowerCard, d.lowerPartner, d.lowerDir, '▼ 下層')}
-      </div>
-      <div class="card-footer">
-        <span></span>
-        <span class="link-hint">點擊查看詳情 →</span>
-      </div>
-    </div>`;
-  }).join('');
-  updateScrollButtons();
+  const info = document.getElementById('resultsInfo');
+  const hasFilters = hasPanelFilters();
+  const infoText = hasFilters
+    ? `共找到 <span>${currentData.length}</span> 筆結果`
+    : `目前收錄軌道資料 <span>${DATA.length}</span> 筆`;
+  fadeSwap('panel-results', [info, grid], () => {
+    info.innerHTML = infoText;
+    if (!hasFilters) {
+      renderPanelPreview();
+      return;
+    }
+    stopPreviewAutoScroll();
+    if (currentData.length === 0) {
+      grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div style="font-size:2rem;margin-bottom:0.5rem;opacity:0.3">😣</div><p>找不到符合條件的結果，期待您成為第一位分享者✨</p></div>`;
+      return;
+    }
+    grid.innerHTML = currentData.map((d, i) => panelCardMarkup(d, `openModal(${i})`)).join('');
+  }, updateScrollButtons);
 }
 
 function dirTag(dir) {
@@ -2437,12 +2799,40 @@ function openModal(idx) {
   openPanelDetail(currentData[idx]);
 }
 
+function restartActivePreview(tab) {
+  if (tab === 'panel' && !hasPanelFilters()) {
+    setupPreviewScroll('#section-panel.active .panel-preview-viewport', getPanelPreviewData().length);
+  } else if (tab === 'endless' && !activePartner) {
+    setupPreviewScroll('#section-endless.active .panel-preview-viewport', getEndlessPreviewData().length);
+  } else {
+    stopPreviewAutoScroll();
+  }
+}
+
 function switchTab(tab, btn) {
+  const nextSection = document.getElementById('section-' + tab);
+  const currentSection = document.querySelector('.section.active');
+  if (!nextSection || currentSection === nextSection) return;
+  if (tabFadeTimer) window.clearTimeout(tabFadeTimer);
+
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   btn.classList.add('active');
-  document.getElementById('section-' + tab).classList.add('active');
-  updateScrollButtons();
+
+  if (currentSection) {
+    currentSection.classList.add('content-transition', 'is-fading');
+  }
+  tabFadeTimer = window.setTimeout(() => {
+    document.querySelectorAll('.section').forEach(s => {
+      s.classList.remove('active', 'is-fading');
+    });
+    nextSection.classList.add('active', 'content-transition', 'is-fading');
+    window.requestAnimationFrame(() => {
+      nextSection.classList.remove('is-fading');
+      restartActivePreview(tab);
+      updateScrollButtons();
+    });
+    tabFadeTimer = null;
+  }, CONTENT_FADE_MS);
 }
 
 function selectPartnerDropdown(value) {
@@ -2524,21 +2914,12 @@ function fmtScore(s) {
   return n.toLocaleString();
 }
 
-function renderEndless() {
-  const grid = document.getElementById('endlessGrid');
-  const info = document.getElementById('endlessInfo');
-  info.innerHTML = `共找到 <span>${ENDLESS_DATA.length}</span> 筆結果`;
-  if (ENDLESS_DATA.length === 0) {
-    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div style="font-size:2rem;margin-bottom:0.5rem;opacity:0.3">😣</div><p>找不到符合條件的結果，期待您成為第一位分享者✨</p></div>`;
-    updateScrollButtons();
-    return;
-  }
-  grid.innerHTML = ENDLESS_DATA.map((d, i) => {
-    const partner = escapeHtml(d.partner);
-    const card = escapeHtml(d.card);
-    const combo = escapeHtml(d.combo);
-    return `
-    <div class="endless-card" data-partner="${partner}" onclick="openEndlessModal(${i})">
+function endlessCardMarkup(d, action) {
+  const partner = escapeHtml(d.partner);
+  const card = escapeHtml(d.card);
+  const combo = escapeHtml(d.combo);
+  return `
+    <div class="endless-card" data-partner="${partner}" onclick="${action}">
       <div class="endless-card-header">
         <div class="card-labels">
           <span class="partner-badge" data-partner="${partner}">${partner}</span>
@@ -2561,8 +2942,49 @@ function renderEndless() {
         <span class="link-hint">點擊查看詳情 →</span>
       </div>
     </div>`;
-  }).join('');
+}
+
+function renderEndlessPreview() {
+  const grid = document.getElementById('endlessGrid');
+  const previewData = getEndlessPreviewData();
+  if (previewData.length === 0) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><p>目前尚無無盡挑戰資料</p></div>`;
+    updateScrollButtons();
+    return;
+  }
+  const loopData = previewData.length > 1 ? [...previewData, ...previewData, ...previewData] : previewData;
+  grid.innerHTML = `
+    <div class="panel-preview">
+      <div class="panel-preview-viewport">
+        <div class="panel-preview-track">
+          ${loopData.map((d, i) => endlessCardMarkup(d, `openEndlessPreview(${i % previewData.length})`)).join('')}
+        </div>
+      </div>
+    </div>`;
+  setupPreviewScroll('#section-endless.active .panel-preview-viewport', previewData.length);
   updateScrollButtons();
+}
+
+function renderEndless() {
+  const grid = document.getElementById('endlessGrid');
+  const info = document.getElementById('endlessInfo');
+  const hasFixedResults = Boolean(activePartner);
+  const infoText = hasFixedResults
+    ? `共找到 <span>${ENDLESS_DATA.length}</span> 筆結果`
+    : `目前收錄無盡挑戰資料 <span>${ENDLESS_ALL.length}</span> 筆`;
+  fadeSwap('endless-results', [info, grid], () => {
+    info.innerHTML = infoText;
+    if (!hasFixedResults) {
+      renderEndlessPreview();
+      return;
+    }
+    stopPreviewAutoScroll();
+    if (ENDLESS_DATA.length === 0) {
+      grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div style="font-size:2rem;margin-bottom:0.5rem;opacity:0.3">😣</div><p>找不到符合條件的結果，期待您成為第一位分享者✨</p></div>`;
+      return;
+    }
+    grid.innerHTML = ENDLESS_DATA.map((d, i) => endlessCardMarkup(d, `openEndlessModal(${i})`)).join('');
+  }, updateScrollButtons);
 }
 
 function openEndlessDetail(d, recordHistory = true) {
@@ -2679,14 +3101,16 @@ updateScrollButtons();
   </svg>
 </button>
 
-<button class="back-to-top" id="backToTopBtn" onclick="scrollToTop()">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
-  去頁首
+<button class="back-to-top" id="backToTopBtn" onclick="scrollToTop()" aria-label="去頁首" title="去頁首">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+    <path d="M6 5h12M12 19V8M7 13l5-5 5 5"/>
+  </svg>
 </button>
 
-<button class="back-to-bottom" id="backToBottomBtn" onclick="scrollToBottom()">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
-  去頁尾
+<button class="back-to-bottom" id="backToBottomBtn" onclick="scrollToBottom()" aria-label="去頁尾" title="去頁尾">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+    <path d="M6 19h12M12 5v11M7 11l5 5 5-5"/>
+  </svg>
 </button>
 
 </body>
