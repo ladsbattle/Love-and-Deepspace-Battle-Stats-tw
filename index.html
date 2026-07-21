@@ -3102,7 +3102,7 @@ function renderCards() {
     }
     stopPreviewAutoScroll();
     if (currentData.length === 0) {
-      grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div style="font-size:2rem;margin-bottom:0.5rem;opacity:0.3">😣</div><p>找不到符合條件的結果，期待您成為第一位分享者✨</p></div>`;
+      grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div style="font-size:2rem;margin-bottom:0.5rem;opacity:0.3">✦</div><p>找不到符合條件的結果，期待您成為第一位分享者✨</p></div>`;
       return;
     }
     grid.innerHTML = currentData.map((d, i) => panelCardMarkup(d, `openModal(${i})`)).join('');
@@ -3344,7 +3344,7 @@ function renderEndless() {
     }
     stopPreviewAutoScroll();
     if (ENDLESS_DATA.length === 0) {
-      grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div style="font-size:2rem;margin-bottom:0.5rem;opacity:0.3">😣</div><p>找不到符合條件的結果，期待您成為第一位分享者✨</p></div>`;
+      grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div style="font-size:2rem;margin-bottom:0.5rem;opacity:0.3">✦</div><p>找不到符合條件的結果，期待您成為第一位分享者✨</p></div>`;
       return;
     }
     grid.innerHTML = ENDLESS_DATA.map((d, i) => endlessCardMarkup(d, `openEndlessModal(${i})`)).join('');
