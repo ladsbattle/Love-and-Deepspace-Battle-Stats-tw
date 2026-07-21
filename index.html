@@ -592,6 +592,8 @@ header {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
   gap: 1rem;
+  position: relative;
+  contain: layout paint;
 }
 
 .panel-preview {
@@ -601,6 +603,9 @@ header {
   border-radius: 12px;
   background: rgba(15,26,46,0.62);
   padding: 1rem 0;
+  contain: layout paint;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 .panel-preview-viewport {
   overflow-x: auto;
@@ -627,6 +632,16 @@ header {
 .panel-preview .endless-card {
   width: 300px;
   flex: 0 0 300px;
+}
+.preview-clearing .panel-preview {
+  height: 0;
+  max-height: 0;
+  margin: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  border-width: 0;
+  opacity: 0;
+  pointer-events: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -655,9 +670,49 @@ header {
   height: 2px;
   opacity: 0;
   transition: opacity 0.25s;
+  z-index: 5;
+  pointer-events: none;
 }
 .panel-card:hover { background: var(--card-hover); border-color: var(--border-bright); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
 .panel-card:hover::before { opacity: 1; }
+
+.viewed-card .viewed-corner {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-top-right-radius: 9px;
+  z-index: 3;
+  pointer-events: none;
+  overflow: hidden;
+}
+.viewed-card .viewed-corner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(45deg, transparent 49%, rgba(216,230,251,0.34) 50%);
+  box-shadow: inset -1px 1px 0 rgba(255,255,255,0.08);
+}
+.viewed-card .viewed-corner span {
+  position: absolute;
+  top: 0.76rem;
+  right: -0.36rem;
+  width: 3.05rem;
+  transform: rotate(45deg);
+  color: rgba(219,232,255,0.66);
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.viewed-card .card-orbit-bar .card-meta-right,
+.viewed-card .endless-card-header .card-meta-right {
+  padding-right: 2.55rem;
+}
 
 .card-labels,
 .card-meta-right {
@@ -832,6 +887,41 @@ header {
   position: relative;
   animation: modalIn 0.2s ease;
   box-shadow: 0 24px 60px rgba(0,0,0,0.6), 0 0 40px rgba(126,184,247,0.06);
+  overflow: hidden;
+}
+.modal > * {
+  position: relative;
+  z-index: 1;
+}
+.modal.viewed-detail::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 3.7rem;
+  height: 3.7rem;
+  border-top-right-radius: 13px;
+  background: linear-gradient(45deg, transparent 49%, rgba(216,230,251,0.3) 50%);
+  z-index: 0;
+  pointer-events: none;
+  box-shadow: inset -1px 1px 0 rgba(255,255,255,0.08);
+}
+.modal.viewed-detail::after {
+  content: '已看過';
+  position: absolute;
+  top: 0.92rem;
+  right: -0.48rem;
+  width: 4.05rem;
+  z-index: 2;
+  pointer-events: none;
+  transform: rotate(45deg);
+  color: rgba(219,232,255,0.62);
+  font-size: 0.54rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
 }
 
 @keyframes modalIn {
@@ -841,22 +931,48 @@ header {
 
 .modal-close {
   position: absolute;
-  top: 1rem; right: 1rem;
-  background: none; border: none;
+  top: 1rem;
+  right: 1rem;
+  width: 2.25rem;
+  height: 2.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid transparent;
+  border-radius: 999px;
   color: var(--text-muted); cursor: pointer;
-  font-size: 1.2rem; line-height: 1;
-  transition: color 0.2s;
+  font-size: 0;
+  line-height: 1;
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
+  z-index: 5;
 }
-.modal-close:hover { color: var(--text); }
+.modal-close::before,
+.modal-close::after {
+  content: '';
+  position: absolute;
+  width: 1.15rem;
+  height: 1.5px;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: 0.9;
+  transform-origin: center;
+}
+.modal-close::before {
+  transform: rotate(45deg);
+}
+.modal-close::after {
+  transform: rotate(-45deg);
+}
+.modal-close:hover { color: var(--text); border-color: var(--border); background: rgba(255,255,255,0.06); }
+
+#modal > .modal-close {
+  top: 1.45rem;
+  right: 4.25rem;
+}
 
 .modal-actions-slot {
-  position: absolute;
-  top: 1rem;
-  right: 2.85rem;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.4rem;
+  display: none;
 }
 .modal-actions-slot .save-card-btn,
 .modal-actions-slot .btn-report {
@@ -922,6 +1038,72 @@ header {
 .modal-val { font-size: 0.85rem; color: var(--text); }
 
 .modal-footer { display: flex; flex-direction: column; gap: 0.6rem; }
+
+.modal-footer-actions {
+  display: flex;
+  align-items: stretch;
+  gap: 0.6rem;
+}
+
+.modal-footer-actions .btn-fb {
+  flex: 1 1 12rem;
+  min-height: 2.7rem;
+  padding: 0 0.9rem;
+  border-radius: 10px;
+  background: rgba(89,132,164,0.68);
+  border-color: rgba(147,199,231,0.68);
+  font-size: 0.78rem;
+  font-weight: 400;
+  letter-spacing: 0.03em;
+}
+
+.modal-secondary-actions {
+  display: flex;
+  align-items: stretch;
+  gap: 0.5rem;
+  flex: 0 0 auto;
+}
+
+.modal-footer-actions .save-card-btn,
+.modal-footer-actions .btn-report {
+  width: 5.25rem;
+  min-height: 2.7rem;
+  box-sizing: border-box;
+  justify-content: center;
+  gap: 0.32rem;
+  padding: 0 0.6rem;
+  border-radius: 10px;
+  font-size: 0.72rem;
+  line-height: 1;
+  background: rgba(255,255,255,0.035);
+  letter-spacing: 0;
+}
+
+.modal-footer-actions .btn-report {
+  color: var(--text-muted);
+  border-color: var(--border);
+}
+
+.modal-footer-actions .btn-fb:hover {
+  background: rgba(89,132,164,0.82);
+  border-color: rgba(147,199,231,0.82);
+}
+
+.modal-footer-actions .save-card-btn:hover,
+.modal-footer-actions .save-card-btn.saved,
+.modal-footer-actions .btn-report:hover {
+  border-color: var(--border-bright);
+  background: rgba(184,212,255,0.13);
+  color: var(--text);
+}
+
+.modal-footer-actions .save-card-btn svg,
+.modal-footer-actions .btn-report svg,
+.modal-footer-actions .fb-outline-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
 
 .info-modal {
   max-width: 560px;
@@ -1130,6 +1312,8 @@ header {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 1rem;
+  position: relative;
+  contain: layout paint;
 }
 .endless-card {
   background: var(--card);
@@ -1148,6 +1332,8 @@ header {
   height: 2px;
   opacity: 0;
   transition: opacity 0.25s;
+  z-index: 5;
+  pointer-events: none;
 }
 .endless-card:hover { background: var(--card-hover); border-color: var(--border-bright); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
 .endless-card:hover::before { opacity: 1; }
@@ -1578,6 +1764,64 @@ select.card-input option {
     width: min(78vw, 290px);
     flex-basis: min(78vw, 290px);
   }
+  .viewed-card .viewed-corner {
+    width: 2.45rem;
+    height: 2.45rem;
+    border-top-right-radius: 9px;
+  }
+  .viewed-card .viewed-corner span {
+    top: 0.66rem;
+    right: -0.36rem;
+    width: 2.95rem;
+    font-size: 0.46rem;
+  }
+  .viewed-card .card-orbit-bar .card-meta-right,
+  .viewed-card .endless-card-header .card-meta-right {
+    padding-right: 2.15rem;
+  }
+  .modal.viewed-detail::before {
+    width: 3.15rem;
+    height: 3.15rem;
+    border-top-right-radius: 13px;
+  }
+  .modal.viewed-detail::after {
+    top: 0.77rem;
+    right: -0.46rem;
+    width: 3.55rem;
+    font-size: 0.5rem;
+  }
+  .modal-close {
+    top: 0.95rem;
+    width: 2.15rem;
+    height: 2.15rem;
+  }
+  .modal-close::before,
+  .modal-close::after {
+    width: 1.08rem;
+  }
+  #modal > .modal-close {
+    top: 1.35rem;
+    right: 3.35rem;
+  }
+  .modal-footer-actions {
+    flex-direction: column;
+    gap: 0.55rem;
+  }
+  .modal-footer-actions .btn-fb {
+    flex: none;
+    width: 100%;
+    min-height: 2.55rem;
+  }
+  .modal-secondary-actions {
+    width: 100%;
+    gap: 0.55rem;
+  }
+  .modal-secondary-actions .save-card-btn,
+  .modal-secondary-actions .btn-report {
+    flex: 1 1 0;
+    width: auto;
+    min-height: 2.5rem;
+  }
   .endless-grid { grid-template-columns: 1fr; }
 
   /* tab nav fits smaller screens */
@@ -1746,7 +1990,7 @@ select.card-input option {
 <!-- Modal -->
 <div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
   <div class="modal" id="modal">
-    <button class="modal-close" onclick="closeModalDirect()">✕</button>
+    <button class="modal-close" onclick="closeModalDirect()" aria-label="關閉">✕</button>
     <div class="modal-actions-slot" id="mActions"></div>
     <div class="modal-header">
       <div class="modal-orbit" id="mOrbit"></div>
@@ -1767,7 +2011,7 @@ select.card-input option {
 
 <div class="modal-overlay" id="infoOverlay" onclick="closeInfoModal(event)">
   <div class="modal info-modal">
-    <button class="modal-close" onclick="closeInfoModalDirect()">✕</button>
+    <button class="modal-close" onclick="closeInfoModalDirect()" aria-label="關閉">✕</button>
     <div class="info-tabs">
       <button class="info-tab active" data-info-tab="intro" onclick="switchInfoTab('intro')">介紹</button>
       <button class="info-tab" data-info-tab="history" onclick="switchInfoTab('history')">版本紀錄</button>
@@ -1803,9 +2047,11 @@ let panelPreviewData = [];
 let endlessPreviewData = [];
 let previewAutoFrame = null;
 let previewLastTime = 0;
+let previewModalPaused = false;
 const PANEL_PREVIEW_SPEED = 0.075;
 const CONTENT_FADE_MS = 150;
 const fadeTimers = {};
+const fadeVersions = {};
 let tabFadeTimer = null;
 let activeFolderTab = 'favorites';
 let localFolder = { favorites: [], history: [] };
@@ -1820,14 +2066,18 @@ function loadingMarkup() {
 
 function fadeSwap(key, elements, update, afterUpdate) {
   const targets = elements.filter(Boolean);
+  fadeVersions[key] = (fadeVersions[key] || 0) + 1;
+  const version = fadeVersions[key];
   if (fadeTimers[key]) window.clearTimeout(fadeTimers[key]);
   targets.forEach(el => {
     el.classList.add('content-transition');
     el.classList.add('is-fading');
   });
   fadeTimers[key] = window.setTimeout(() => {
+    if (version !== fadeVersions[key]) return;
     update();
     window.requestAnimationFrame(() => {
+      if (version !== fadeVersions[key]) return;
       targets.forEach(el => el.classList.remove('is-fading'));
       if (afterUpdate) afterUpdate();
     });
@@ -2229,6 +2479,41 @@ function isFavorite(item) {
   return localFolder.favorites.some(saved => itemKey(saved) === key);
 }
 
+function isViewed(item) {
+  const key = itemKey(item);
+  return localFolder.history.some(saved => itemKey(saved) === key);
+}
+
+function encodedItemKey(item) {
+  return encodeURIComponent(itemKey(item));
+}
+
+function viewedCornerMarkup() {
+  return '<div class="viewed-corner" aria-hidden="true"><span>已看過</span></div>';
+}
+
+function viewedCardMarkup(item) {
+  return isViewed(item) ? viewedCornerMarkup() : '';
+}
+
+function viewedCardClass(item) {
+  return isViewed(item) ? ' viewed-card' : '';
+}
+
+function markViewedCards(item) {
+  const key = encodedItemKey(item);
+  document.querySelectorAll(`[data-view-key="${key}"]`).forEach(card => {
+    card.classList.add('viewed-card');
+    if (!card.querySelector('.viewed-corner')) {
+      card.insertAdjacentHTML('afterbegin', viewedCornerMarkup());
+    }
+  });
+}
+
+function setModalViewed(isViewedNow = true) {
+  document.getElementById('modal')?.classList.toggle('viewed-detail', isViewedNow);
+}
+
 function toggleFavorite(item, event) {
   if (event) event.stopPropagation();
   const key = itemKey(item);
@@ -2265,6 +2550,7 @@ function addHistoryItem(item) {
   localFolder.history.unshift({ ...item, savedAt: Date.now() });
   localFolder.history = localFolder.history.slice(0, 50);
   saveLocalFolder();
+  markViewedCards(item);
   renderFolderPanel();
 }
 
@@ -2291,6 +2577,22 @@ function reportButton(reportUrl) {
       </svg>
       回報
     </a>`;
+}
+
+function modalFooterActions(link, folderItem, reportUrl) {
+  return `
+    <div class="modal-footer-actions">
+      <a href="${escapeHtml(safeExternalUrl(link))}" target="_blank" rel="noopener" class="btn-fb">
+        <svg class="fb-outline-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M15.5 4.5h-2.2c-2.1 0-3.3 1.3-3.3 3.4V10H8v3h2v6.5h3V13h2.1l0.5-3H13V8.1c0-0.9 0.4-1.4 1.4-1.4h1.1V4.5z"/>
+        </svg>
+        前往Facebook查看
+      </a>
+      <div class="modal-secondary-actions">
+        ${favoriteButton(folderItem)}
+        ${reportButton(reportUrl)}
+      </div>
+    </div>`;
 }
 
 function groupChangelogByDate(items) {
@@ -2369,8 +2671,10 @@ function switchFolderTab(tab) {
 }
 
 function clearFolderTab() {
-  const target = activeFolderTab === 'favorites' ? '【收藏】？' : '【瀏覽記錄】？';
-  if (!confirm(`以下操作無法復原，是否確認刪除${target}`)) return;
+  const message = activeFolderTab === 'favorites'
+    ? '以下操作無法復原，是否確認刪除【收藏】？'
+    : '以下操作無法復原，是否確認刪除【瀏覽記錄】及【已看過】標籤？';
+  if (!confirm(message)) return;
   localFolder[activeFolderTab] = [];
   saveLocalFolder();
   renderCards();
@@ -2569,12 +2873,15 @@ function hasPanelFilters() {
   );
 }
 
-function panelCardMarkup(d, action) {
+function panelCardMarkup(d, action, previewType = '', previewIndex = null) {
+  const folderItem = panelFolderItem(d);
   const orbit = escapeHtml(d.orbit);
   const orbitLabel = escapeHtml(ORBIT_LABEL[d.orbit] || d.orbit);
   const actionAttr = action ? ` onclick="${action}"` : '';
+  const previewAttrs = previewType ? ` data-preview-type="${previewType}" data-preview-index="${previewIndex}"` : '';
   return `
-    <div class="panel-card" data-orbit="${orbit}"${actionAttr}>
+    <div class="panel-card${viewedCardClass(folderItem)}" data-view-key="${escapeHtml(encodedItemKey(folderItem))}" data-orbit="${orbit}"${previewAttrs}${actionAttr}>
+      ${viewedCardMarkup(folderItem)}
       <div class="card-orbit-bar">
         <div class="card-labels">
           <span class="orbit-badge" data-orbit="${orbit}">${orbitLabel}</span>
@@ -2597,12 +2904,18 @@ function panelCardMarkup(d, action) {
 
 function openPanelPreview(idx) {
   const item = panelPreviewData[idx];
-  if (item) openPanelDetail(item);
+  if (item) {
+    previewModalPaused = true;
+    openPanelDetail(item);
+  }
 }
 
 function openEndlessPreview(idx) {
   const item = endlessPreviewData[idx];
-  if (item) openEndlessDetail(item);
+  if (item) {
+    previewModalPaused = true;
+    openEndlessDetail(item);
+  }
 }
 
 function renderPanelPreview() {
@@ -2618,7 +2931,7 @@ function renderPanelPreview() {
     <div class="panel-preview">
       <div class="panel-preview-viewport">
         <div class="panel-preview-track">
-          ${loopData.map((d, i) => panelCardMarkup(d, '').replace('<div class="panel-card"', `<div class="panel-card" data-preview-type="panel" data-preview-index="${i % previewData.length}"`)).join('')}
+          ${loopData.map((d, i) => panelCardMarkup(d, '', 'panel', i % previewData.length)).join('')}
         </div>
       </div>
     </div>`;
@@ -2632,6 +2945,16 @@ function stopPreviewAutoScroll() {
   previewAutoFrame = null;
 }
 
+function clearPreviewBeforeResults(grid) {
+  if (!grid || !grid.querySelector('.panel-preview')) return;
+  stopPreviewAutoScroll();
+  grid.classList.add('preview-clearing');
+  void grid.offsetHeight;
+  grid.replaceChildren();
+  grid.classList.remove('is-fading', 'preview-clearing');
+  void grid.offsetHeight;
+}
+
 function setupPreviewScroll(selector, itemCount) {
   const viewport = document.querySelector(selector);
   if (!viewport) return;
@@ -2639,11 +2962,26 @@ function setupPreviewScroll(selector, itemCount) {
   let startY = 0;
   let startScrollLeft = 0;
   let isMouseDragging = false;
+  let isAutoPaused = false;
+  let resumeAutoTimer = null;
   let moved = false;
   let pressedPreviewCard = null;
   let wrapping = false;
 
   stopPreviewAutoScroll();
+
+  const pauseAutoScroll = () => {
+    isAutoPaused = true;
+    window.clearTimeout(resumeAutoTimer);
+  };
+
+  const resumeAutoScroll = (delay = 700) => {
+    window.clearTimeout(resumeAutoTimer);
+    resumeAutoTimer = window.setTimeout(() => {
+      isAutoPaused = false;
+      previewLastTime = performance.now();
+    }, delay);
+  };
 
   const getLoopWidth = () => viewport.scrollWidth / 3;
 
@@ -2661,6 +2999,7 @@ function setupPreviewScroll(selector, itemCount) {
   };
 
   viewport.addEventListener('pointerdown', event => {
+    pauseAutoScroll();
     moved = false;
     startX = event.clientX;
     startY = event.clientY;
@@ -2689,6 +3028,7 @@ function setupPreviewScroll(selector, itemCount) {
       if (pressedPreviewCard.dataset.previewType === 'endless') openEndlessPreview(idx);
     }
     pressedPreviewCard = null;
+    resumeAutoScroll();
     if (event.pointerType !== 'mouse') return;
     isMouseDragging = false;
     if (viewport.hasPointerCapture(event.pointerId)) {
@@ -2698,9 +3038,14 @@ function setupPreviewScroll(selector, itemCount) {
 
   viewport.addEventListener('pointercancel', event => {
     pressedPreviewCard = null;
+    resumeAutoScroll();
     if (event.pointerType !== 'mouse') return;
     isMouseDragging = false;
   });
+  viewport.addEventListener('mouseenter', pauseAutoScroll);
+  viewport.addEventListener('mouseleave', () => resumeAutoScroll());
+  viewport.addEventListener('focusin', pauseAutoScroll);
+  viewport.addEventListener('focusout', () => resumeAutoScroll());
   viewport.addEventListener('scroll', wrapScrollPosition, { passive: true });
   viewport.addEventListener('click', event => {
     if (!moved) return;
@@ -2716,7 +3061,7 @@ function setupPreviewScroll(selector, itemCount) {
     const autoScroll = time => {
       const elapsed = Math.min(time - previewLastTime, 80);
       previewLastTime = time;
-      if (!document.hidden) {
+      if (!document.hidden && !isAutoPaused && !previewModalPaused) {
         viewport.scrollLeft += elapsed * PANEL_PREVIEW_SPEED;
         wrapScrollPosition();
       }
@@ -2748,6 +3093,7 @@ function renderCards() {
   const infoText = hasFilters
     ? `共找到 <span>${currentData.length}</span> 筆結果`
     : `目前收錄軌道資料 <span>${DATA.length}</span> 筆`;
+  if (hasFilters) clearPreviewBeforeResults(grid);
   fadeSwap('panel-results', [info, grid], () => {
     info.innerHTML = infoText;
     if (!hasFilters) {
@@ -2779,7 +3125,9 @@ function modalBlock(card, partner, dir) {
 
 function openPanelDetail(d, recordHistory = true) {
   const folderItem = panelFolderItem(d);
+  const wasViewedBeforeOpen = isViewed(folderItem);
   if (recordHistory) addHistoryItem(folderItem);
+  setModalViewed(wasViewedBeforeOpen);
   // restore block titles for panel cards
   document.getElementById('mUpperBlock').querySelector('.modal-block-title') && document.getElementById('mUpperBlock').querySelector('.modal-block-title').remove();
   document.getElementById('mLowerBlock').querySelector('.modal-block-title') && document.getElementById('mLowerBlock').querySelector('.modal-block-title').remove();
@@ -2800,12 +3148,8 @@ document.getElementById('mLayer').style.color = orbitColors[d.orbit] || 'var(--t
   const orbitLabel = ORBIT_LABEL[d.orbit] || d.orbit;
   const reportUrl = `https://docs.google.com/forms/d/e/1FAIpQLSdu-eI87wlkR2LnTlwc3kzHD4pz_PL1-gydhwCr7W-7HKOxyg/viewform?usp=pp_url&entry.1527588954=${encodeURIComponent(orbitLabel)}&entry.1863774587=${encodeURIComponent(d.layer)}&entry.1242930374=${encodeURIComponent(d.link)}`;
 
-  document.getElementById('mActions').innerHTML = favoriteButton(folderItem) + reportButton(reportUrl);
-  document.getElementById('mFooter').innerHTML = `
-    <a href="${escapeHtml(safeExternalUrl(d.link))}" target="_blank" rel="noopener" class="btn-fb">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
-      前往Facebook查看
-    </a>`;
+  document.getElementById('mActions').innerHTML = '';
+  document.getElementById('mFooter').innerHTML = modalFooterActions(d.link, folderItem, reportUrl);
 
   document.getElementById('modalOverlay').classList.add('show');
 }
@@ -2929,13 +3273,16 @@ function fmtScore(s) {
   return n.toLocaleString();
 }
 
-function endlessCardMarkup(d, action) {
+function endlessCardMarkup(d, action, previewType = '', previewIndex = null) {
+  const folderItem = endlessFolderItem(d);
   const partner = escapeHtml(d.partner);
   const card = escapeHtml(d.card);
   const combo = escapeHtml(d.combo);
   const actionAttr = action ? ` onclick="${action}"` : '';
+  const previewAttrs = previewType ? ` data-preview-type="${previewType}" data-preview-index="${previewIndex}"` : '';
   return `
-    <div class="endless-card" data-partner="${partner}"${actionAttr}>
+    <div class="endless-card${viewedCardClass(folderItem)}" data-view-key="${escapeHtml(encodedItemKey(folderItem))}" data-partner="${partner}"${previewAttrs}${actionAttr}>
+      ${viewedCardMarkup(folderItem)}
       <div class="endless-card-header">
         <div class="card-labels">
           <span class="partner-badge" data-partner="${partner}">${partner}</span>
@@ -2973,7 +3320,7 @@ function renderEndlessPreview() {
     <div class="panel-preview">
       <div class="panel-preview-viewport">
         <div class="panel-preview-track">
-          ${loopData.map((d, i) => endlessCardMarkup(d, '').replace('<div class="endless-card"', `<div class="endless-card" data-preview-type="endless" data-preview-index="${i % previewData.length}"`)).join('')}
+          ${loopData.map((d, i) => endlessCardMarkup(d, '', 'endless', i % previewData.length)).join('')}
         </div>
       </div>
     </div>`;
@@ -2988,6 +3335,7 @@ function renderEndless() {
   const infoText = hasFixedResults
     ? `共找到 <span>${ENDLESS_DATA.length}</span> 筆結果`
     : `目前收錄無盡挑戰資料 <span>${ENDLESS_ALL.length}</span> 筆`;
+  if (hasFixedResults) clearPreviewBeforeResults(grid);
   fadeSwap('endless-results', [info, grid], () => {
     info.innerHTML = infoText;
     if (!hasFixedResults) {
@@ -3005,7 +3353,9 @@ function renderEndless() {
 
 function openEndlessDetail(d, recordHistory = true) {
   const folderItem = endlessFolderItem(d);
+  const wasViewedBeforeOpen = isViewed(folderItem);
   if (recordHistory) addHistoryItem(folderItem);
+  setModalViewed(wasViewedBeforeOpen);
   // remove block titles for endless (no upper/lower layers)
   document.getElementById('mUpperBlock').querySelector('.modal-block-title') && document.getElementById('mUpperBlock').querySelector('.modal-block-title').remove();
   document.getElementById('mLowerBlock').querySelector('.modal-block-title') && document.getElementById('mLowerBlock').querySelector('.modal-block-title').remove();
@@ -3020,12 +3370,8 @@ function openEndlessDetail(d, recordHistory = true) {
 
   const reportUrl = `https://docs.google.com/forms/d/e/1FAIpQLSdP6bWGJ6GFkyOZ7dWsqDbiup7KzTyJGxw9Feta-EqCS3pG6w/viewform?usp=pp_url&entry.1527588954=${encodeURIComponent(d.partner)}&entry.1242930374=${encodeURIComponent(d.link)}`;
 
-  document.getElementById('mActions').innerHTML = favoriteButton(folderItem) + reportButton(reportUrl);
-  document.getElementById('mFooter').innerHTML = `
-    <a href="${escapeHtml(safeExternalUrl(d.link))}" target="_blank" rel="noopener" class="btn-fb">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
-      前往Facebook查看
-    </a>`;
+  document.getElementById('mActions').innerHTML = '';
+  document.getElementById('mFooter').innerHTML = modalFooterActions(d.link, folderItem, reportUrl);
   document.getElementById('modalOverlay').classList.add('show');
 }
 
@@ -3036,6 +3382,9 @@ function openEndlessModal(idx) {
 function closeModal(e) { if (e.target === document.getElementById('modalOverlay')) closeModalDirect(); }
 function closeModalDirect() {
   document.getElementById('modalOverlay').classList.remove('show');
+  previewModalPaused = false;
+  previewLastTime = performance.now();
+  setModalViewed(false);
   document.getElementById('mLowerBlock').style.display = '';
 }
 document.addEventListener('keydown', e => {
