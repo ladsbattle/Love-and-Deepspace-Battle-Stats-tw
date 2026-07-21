@@ -2572,8 +2572,9 @@ function hasPanelFilters() {
 function panelCardMarkup(d, action) {
   const orbit = escapeHtml(d.orbit);
   const orbitLabel = escapeHtml(ORBIT_LABEL[d.orbit] || d.orbit);
+  const actionAttr = action ? ` onclick="${action}"` : '';
   return `
-    <div class="panel-card" data-orbit="${orbit}" onclick="${action}">
+    <div class="panel-card" data-orbit="${orbit}"${actionAttr}>
       <div class="card-orbit-bar">
         <div class="card-labels">
           <span class="orbit-badge" data-orbit="${orbit}">${orbitLabel}</span>
@@ -2617,7 +2618,7 @@ function renderPanelPreview() {
     <div class="panel-preview">
       <div class="panel-preview-viewport">
         <div class="panel-preview-track">
-          ${loopData.map((d, i) => panelCardMarkup(d, `openPanelPreview(${i % previewData.length})`)).join('')}
+          ${loopData.map((d, i) => panelCardMarkup(d, '').replace('<div class="panel-card"', `<div class="panel-card" data-preview-type="panel" data-preview-index="${i % previewData.length}"`)).join('')}
         </div>
       </div>
     </div>`;
@@ -2635,9 +2636,11 @@ function setupPreviewScroll(selector, itemCount) {
   const viewport = document.querySelector(selector);
   if (!viewport) return;
   let startX = 0;
+  let startY = 0;
   let startScrollLeft = 0;
   let isMouseDragging = false;
   let moved = false;
+  let pressedPreviewCard = null;
   let wrapping = false;
 
   stopPreviewAutoScroll();
@@ -2658,10 +2661,12 @@ function setupPreviewScroll(selector, itemCount) {
   };
 
   viewport.addEventListener('pointerdown', event => {
-    if (event.pointerType !== 'mouse') return;
-    isMouseDragging = true;
     moved = false;
     startX = event.clientX;
+    startY = event.clientY;
+    pressedPreviewCard = event.target.closest('[data-preview-type][data-preview-index]');
+    if (event.pointerType !== 'mouse') return;
+    isMouseDragging = true;
     startScrollLeft = viewport.scrollLeft;
     viewport.setPointerCapture(event.pointerId);
   });
@@ -2675,14 +2680,24 @@ function setupPreviewScroll(selector, itemCount) {
   });
 
   viewport.addEventListener('pointerup', event => {
+    const deltaX = Math.abs(event.clientX - startX);
+    const deltaY = Math.abs(event.clientY - startY);
+    if (!moved && deltaX < 8 && deltaY < 8 && pressedPreviewCard) {
+      event.preventDefault();
+      const idx = Number(pressedPreviewCard.dataset.previewIndex);
+      if (pressedPreviewCard.dataset.previewType === 'panel') openPanelPreview(idx);
+      if (pressedPreviewCard.dataset.previewType === 'endless') openEndlessPreview(idx);
+    }
+    pressedPreviewCard = null;
     if (event.pointerType !== 'mouse') return;
     isMouseDragging = false;
-    if (event.pointerType === 'mouse' && viewport.hasPointerCapture(event.pointerId)) {
+    if (viewport.hasPointerCapture(event.pointerId)) {
       viewport.releasePointerCapture(event.pointerId);
     }
   });
 
   viewport.addEventListener('pointercancel', event => {
+    pressedPreviewCard = null;
     if (event.pointerType !== 'mouse') return;
     isMouseDragging = false;
   });
@@ -2918,8 +2933,9 @@ function endlessCardMarkup(d, action) {
   const partner = escapeHtml(d.partner);
   const card = escapeHtml(d.card);
   const combo = escapeHtml(d.combo);
+  const actionAttr = action ? ` onclick="${action}"` : '';
   return `
-    <div class="endless-card" data-partner="${partner}" onclick="${action}">
+    <div class="endless-card" data-partner="${partner}"${actionAttr}>
       <div class="endless-card-header">
         <div class="card-labels">
           <span class="partner-badge" data-partner="${partner}">${partner}</span>
@@ -2957,7 +2973,7 @@ function renderEndlessPreview() {
     <div class="panel-preview">
       <div class="panel-preview-viewport">
         <div class="panel-preview-track">
-          ${loopData.map((d, i) => endlessCardMarkup(d, `openEndlessPreview(${i % previewData.length})`)).join('')}
+          ${loopData.map((d, i) => endlessCardMarkup(d, '').replace('<div class="endless-card"', `<div class="endless-card" data-preview-type="endless" data-preview-index="${i % previewData.length}"`)).join('')}
         </div>
       </div>
     </div>`;
