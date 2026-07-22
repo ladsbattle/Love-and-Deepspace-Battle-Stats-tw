@@ -1,6 +1,6 @@
 # 面板資料庫｜戀與深空戰鬥討論群
 
-This project is a battle stats database website for 「戀與深空戰鬥討論群」. It collects orbit and Endless Challenge battle stats, allowing players to search, filter, save, and review battle records more efficiently.
+This project is a battle stats database website for 「戀與深空戰鬥討論群」. It collects Orbit and Endless Challenge battle stats, allowing players to search, filter, save, and review battle records more efficiently.
 
 ## Website
 
