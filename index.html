@@ -2259,6 +2259,33 @@ function clearLayerInput() {
   layerOK = true;
 }
 
+function clearPanelResultsForInvalidLayer() {
+  activeLayerFilters = { upper: [], lower: [] };
+  currentData = [];
+  const dynamicNoMatch = document.getElementById('dynamicNoMatch');
+  const info = document.getElementById('resultsInfo');
+  const grid = document.getElementById('cardsGrid');
+
+  renderDynamicFilters([], null);
+  if (dynamicNoMatch) dynamicNoMatch.classList.remove('show');
+
+  fadeVersions['panel-results'] = (fadeVersions['panel-results'] || 0) + 1;
+  if (fadeTimers['panel-results']) {
+    window.clearTimeout(fadeTimers['panel-results']);
+    fadeTimers['panel-results'] = null;
+  }
+  stopPreviewAutoScroll();
+  if (info) {
+    info.classList.remove('is-fading');
+    info.innerHTML = '';
+  }
+  if (grid) {
+    grid.classList.remove('is-fading', 'preview-clearing');
+    grid.replaceChildren();
+  }
+  updateScrollButtons();
+}
+
 function updateLayerInputState() {
   const inp = document.getElementById('layerInput');
   if (!inp) return;
@@ -2278,7 +2305,13 @@ function validateLayer() {
     if (isNaN(num) || num < 1 || num > limit) {
       layerOK = false;
       inp.classList.add('error-input');
+      if (errEl) {
+        errEl.textContent = !isNaN(num) && activeOrbit && num > limit
+          ? `此軌道目前最高開放至 ${limit} 層`
+          : '請輸入有效層數';
+      }
       errEl.classList.add('show');
+      clearPanelResultsForInvalidLayer();
     } else {
       inp.classList.remove('error-input');
       errEl.classList.remove('show');
@@ -2799,6 +2832,10 @@ function matchesLayerFilters(d, side) {
 }
 
 function applyFilters() {
+  if (!layerOK) {
+    clearPanelResultsForInvalidLayer();
+    return;
+  }
   const layerVal = document.getElementById('layerInput').value.trim();
   const layerNum = layerVal !== '' ? parseInt(layerVal) : null;
   const videoOnly = document.getElementById('videoOnly').checked;
