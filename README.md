@@ -1,6 +1,6 @@
 # 面板資料庫｜戀與深空戰鬥討論群
 
-This project is a battle stats database website for 「戀與深空戰鬥討論群」. It collects Orbit and Endless Challenge battle stats, allowing players to search, filter, save, and review battle records more efficiently.
+This project is a battle stats database website for 「戀與深空戰鬥討論群」. It collects orbit and Endless Challenge battle stats, allowing players to search, filter, save, and review battle records more efficiently.
 
 ## Website
 
@@ -33,6 +33,14 @@ Orbit → Layer → Upper Card → Lower Card
 
 Within the same orbit and layer, maintainers may adjust the display order based on readability and reference value.
 
+## Image Assets
+
+When adding or updating image assets, keep filenames consistent with the names used in Google Sheets and the front-end display.
+
+- Companion icons should be placed in `assets/companions/`.
+- Rank icons should be placed in `assets/ranks/`.
+- Use clear PNG files with transparent backgrounds when possible.
+
 ## Deployment
 
 This project is deployed with GitHub Pages.
@@ -42,3 +50,5 @@ To update the website, replace or edit `index.html`, then commit the change to G
 ## Notes
 
 This website is a fan-maintained database for battle stats reference. All data is provided for search and reference purposes only.
+
+- If Valko（敖尹） returns in a future update, remember to restore the Metal orbit visibility, upload the related companion image assets, and confirm that the Google Sheets data matches the front-end filter options before deployment.
