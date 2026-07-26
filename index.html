@@ -7,6 +7,10 @@
 <meta name="google-site-verification" content="UHNgtRlHxJWFeI49KVa_EwdrqgQog3_SIMqEK59S5qY" />
 <meta name="description" content="戀與深空戰鬥討論群面板資料庫，收錄軌道與無盡挑戰通關資料，提供層數、日卡、搭檔、影片等條件查詢。">
 <link rel="canonical" href="https://ladsbattle.github.io/Love-and-Deepspace-Battle-Stats-tw/">
+<link rel="apple-touch-icon" href="assets/icons/site-icon-180.png">
+<link rel="icon" type="image/png" sizes="512x512" href="assets/icons/site-icon-512.png">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/icons/site-icon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="assets/icons/site-icon-16.png">
 <meta property="og:locale" content="zh_TW">
 <meta property="og:type" content="website">
 <meta property="og:title" content="面板資料庫｜戀與深空戰鬥討論群">
@@ -67,6 +71,10 @@
 
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  scrollbar-gutter: stable;
+}
 
 body {
   background: var(--bg);
@@ -200,8 +208,25 @@ header {
   padding: 1.25rem 1.25rem 2rem;
 }
 
+@media (min-width: 900px) {
+  html {
+    font-size: 17px;
+  }
+
+  .container {
+    max-width: 1180px;
+  }
+}
+
+@media (max-width: 600px) {
+  html {
+    font-size: 17.6px;
+  }
+}
+
 /* Filter panel */
-.filter-panel {
+.filter-panel,
+.endless-filter-panel {
   background: var(--bg2);
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -211,16 +236,19 @@ header {
 
 .filter-title {
   font-size: 0.82rem;
+  line-height: 1.25;
   letter-spacing: 0.25em;
   color: var(--text-muted);
   text-transform: uppercase;
+  min-width: 0;
 }
 
 .filter-header {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
   gap: 1rem;
+  min-height: 2rem;
   margin-bottom: 1.125rem;
 }
 
@@ -567,6 +595,19 @@ header {
   align-items: center;
   gap: 0.45rem;
   color: var(--text-muted);
+  flex-wrap: wrap;
+}
+.boot-progress-inline {
+  display: inline-flex;
+  width: auto;
+  gap: 0.45rem;
+  flex-wrap: nowrap;
+}
+.boot-progress-inline .loading-text {
+  flex: 0 0 auto;
+}
+.boot-progress-inline .load-progress {
+  flex: 0 0 auto;
 }
 .loading-spinner {
   width: 0.82rem;
@@ -579,12 +620,66 @@ header {
 .loading-text {
   animation: loadingBreath 1.6s ease-in-out infinite;
 }
+.load-progress {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  color: var(--text-dim);
+}
+.load-progress-track {
+  position: relative;
+  width: 100%;
+  height: 0.34rem;
+  overflow: hidden;
+  border-radius: 999px;
+  border: 1px solid rgba(184,212,255,0.18);
+  background: rgba(184,212,255,0.08);
+}
+.load-progress-fill {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(184,212,255,0.46), rgba(228,239,255,0.9));
+  box-shadow: 0 0 12px rgba(184,212,255,0.22);
+  transition: width 0.22s ease;
+}
+.load-progress strong {
+  color: var(--text-muted);
+  font-weight: 400;
+  min-width: 2.35rem;
+  text-align: left;
+}
+body.is-app-loading .filter-panel,
+body.is-app-loading .endless-filter-panel {
+  opacity: 0.72;
+}
+body.is-app-loading .tab-btn,
+body.is-app-loading .filter-panel button,
+body.is-app-loading .filter-panel input,
+body.is-app-loading .endless-filter-panel button,
+body.is-app-loading .endless-filter-panel input,
+body.is-app-loading .endless-filter-panel select {
+  cursor: wait;
+}
 @keyframes loadingSpin {
   to { transform: rotate(360deg); }
 }
 @keyframes loadingBreath {
   0%, 100% { opacity: 0.58; }
   50% { opacity: 1; }
+}
+@keyframes fbActionPulse {
+  0%, 100% {
+    box-shadow:
+      inset 0 0 0 1px rgba(255,255,255,0.025),
+      0 0 14px rgba(184,212,255,0.055);
+  }
+  50% {
+    box-shadow:
+      inset 0 0 0 1px rgba(255,255,255,0.05),
+      0 0 22px rgba(184,212,255,0.16);
+  }
 }
 
 /* Cards grid */
@@ -649,6 +744,9 @@ header {
     overflow-x: auto;
     -webkit-mask-image: none;
     mask-image: none;
+  }
+  .modal.panel-detail .modal-footer-actions .btn-fb {
+    animation: none;
   }
 }
 
@@ -727,6 +825,12 @@ header {
   gap: 0.75rem;
   margin-bottom: 0.75rem;
 }
+.panel-card-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.48rem;
+  min-width: 0;
+}
 .card-labels {
   min-width: 0;
   flex-wrap: wrap;
@@ -744,7 +848,18 @@ header {
 .panel-card[data-orbit="金屬"]::before  { background: var(--col-metal); }
 
 /* orbit badges on card */
-.orbit-badge { font-size: 0.65rem; letter-spacing: 0.1em; padding: 0.18rem 0.6rem; border-radius: 999px; border: 1px solid; font-weight: 500; }
+.orbit-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  padding: 0.18rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid;
+  font-weight: 600;
+}
 .orbit-badge[data-orbit="開放"]  { color: var(--col-open);   border-color: var(--col-open-border);   background: var(--col-open-bg); }
 .orbit-badge[data-orbit="光"]    { color: var(--col-light);  border-color: var(--col-light-border);  background: var(--col-light-bg); }
 .orbit-badge[data-orbit="冰"]    { color: var(--col-ice);    border-color: var(--col-ice-border);    background: var(--col-ice-bg); }
@@ -755,6 +870,9 @@ header {
 .orbit-badge[data-orbit="金屬"]  { color: var(--col-metal);  border-color: var(--col-metal-border);  background: var(--col-metal-bg); }
 
 .layer-num {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
   font-family: 'Noto Serif TC', serif;
   font-size: 1.05rem;
   letter-spacing: 0.05em;
@@ -782,14 +900,29 @@ header {
   border: 1px solid rgba(255,255,255,0.05);
   border-radius: 7px;
   padding: 0.55rem 0.75rem;
+  box-sizing: border-box;
+  min-height: 4.2rem;
 }
 
 .layer-label {
   font-size: 0.6rem;
   letter-spacing: 0.15em;
-  color: var(--text-dim);
+  color: rgba(157, 190, 235, 0.86);
+  font-weight: 400;
   margin-bottom: 0.3rem;
   text-transform: uppercase;
+}
+
+.layer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.55rem;
+  margin-bottom: 0.32rem;
+}
+
+.layer-head .layer-label {
+  margin-bottom: 0;
 }
 
 .layer-info {
@@ -799,19 +932,88 @@ header {
   flex-wrap: wrap;
 }
 
+.layer-data-grid {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.16rem;
+  row-gap: 0.16rem;
+  min-width: 0;
+}
+
+.layer-data-cell {
+  min-width: 0;
+}
+.layer-data-cell + .layer-data-cell {
+  padding-left: 0;
+}
+.layer-data-grid-empty {
+  min-height: 2.42rem;
+  justify-content: center;
+}
+.layer-data-empty {
+  grid-column: 1 / -1;
+}
+
 .card-name {
   font-size: 0.82rem;
-  color: var(--text);
-  font-weight: 400;
+  color: rgba(238,244,255,0.92);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rank-icon {
+  display: inline-block;
+  width: 1.18em;
+  height: 1.18em;
+  margin-left: 0.32rem;
+  object-fit: contain;
+  vertical-align: -0.18em;
+  filter: drop-shadow(0 0 4px rgba(184, 212, 255, 0.16));
+}
+
+.companion-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.34rem;
+  min-width: 0;
+  max-width: 100%;
+  vertical-align: middle;
+}
+
+.companion-avatar {
+  width: 1.24rem;
+  height: 1.24rem;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+  flex: 0 0 auto;
+  border: 1px solid rgba(184,212,255,0.34);
+  background: transparent;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.2), 0 0 6px rgba(184,212,255,0.08);
+}
+
+.companion-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .partner-name {
-  font-size: 0.75rem;
-  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 450;
+  color: rgba(190,211,240,0.84);
+  letter-spacing: 0.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .dir-tag {
-  margin-left: auto;
   font-size: 0.65rem;
   padding: 0.15rem 0.45rem;
   border-radius: 4px;
@@ -819,9 +1021,13 @@ header {
   letter-spacing: 0.05em;
   white-space: nowrap;
 }
-.dir-順 { background: rgba(52,211,153,0.12); color: #e3e3e3; border: 1px solid rgba(52,211,153,0.25); }
-.dir-逆 { background: rgba(249,115,22,0.12);  color: #e3e3e3; border: 1px solid rgba(249,115,22,0.25); }
+.dir-順 { background: rgba(184,212,255,0.055); color: #dce6f4; border: 1px solid rgba(184,212,255,0.34); }
+.dir-逆 { background: rgba(210,220,238,0.045); color: #dce6f4; border: 1px solid rgba(210,220,238,0.26); }
 .dir-na { background: rgba(107,131,168,0.1);  color: var(--text-dim); border: 1px solid rgba(107,131,168,0.2); }
+.dir-placeholder {
+  visibility: hidden;
+  pointer-events: none;
+}
 
 .na-text { font-size: 0.78rem; color: var(--text-dim); }
 
@@ -971,43 +1177,14 @@ header {
   right: 4.25rem;
 }
 
-.modal-actions-slot {
-  display: none;
-}
-.modal-actions-slot .save-card-btn,
-.modal-actions-slot .btn-report {
-  width: 4.75rem;
-  height: 1.85rem;
-  box-sizing: border-box;
-  justify-content: center;
-  gap: 0.28rem;
-  padding: 0;
-  border-radius: 999px;
-  font-size: 0.72rem;
-  line-height: 1;
-  background: rgba(255,255,255,0.04);
-  letter-spacing: 0;
-}
-.modal-actions-slot .btn-report {
-  color: var(--text-muted);
-  border-color: var(--border);
-}
-.modal-actions-slot .btn-report:hover {
-  border-color: var(--border-bright);
-  color: var(--text);
-  background: rgba(255,255,255,0.08);
-}
-.modal-actions-slot .btn-report svg {
-  width: 12px;
-  height: 12px;
-  flex-shrink: 0;
-}
-.modal-actions-slot .save-card-btn svg {
-  width: 12px;
-  height: 12px;
-}
 .modal-header { margin-bottom: 1.25rem; }
-.modal-orbit { margin-bottom: 0.4rem; }
+.modal-orbit {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.4rem;
+}
 .modal-layer {
   font-family: 'Noto Serif TC', serif;
   font-size: 1.5rem;
@@ -1046,15 +1223,45 @@ header {
 }
 
 .modal-footer-actions .btn-fb {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
   flex: 1 1 12rem;
   min-height: 2.7rem;
   padding: 0 0.9rem;
   border-radius: 10px;
-  background: rgba(89,132,164,0.68);
-  border-color: rgba(147,199,231,0.68);
+  background: rgba(255,255,255,0.035);
+  border-color: var(--border);
+  color: var(--text);
   font-size: 0.78rem;
-  font-weight: 400;
+  font-weight: 500;
   letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.btn-video-inline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.22rem;
+  min-height: 1.1rem;
+  padding: 0 0.42rem;
+  border: 1px solid rgba(238,244,255,0.32);
+  border-radius: 999px;
+  background: rgba(238,244,255,0.08);
+  color: rgba(238,244,255,0.82);
+  font-size: 0.58rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.btn-video-inline svg {
+  width: 0.62rem;
+  height: 0.62rem;
+  flex-shrink: 0;
 }
 
 .modal-secondary-actions {
@@ -1085,8 +1292,9 @@ header {
 }
 
 .modal-footer-actions .btn-fb:hover {
-  background: rgba(89,132,164,0.82);
-  border-color: rgba(147,199,231,0.82);
+  border-color: var(--border-bright);
+  background: rgba(184,212,255,0.13);
+  color: var(--text);
 }
 
 .modal-footer-actions .save-card-btn:hover,
@@ -1098,63 +1306,508 @@ header {
 }
 
 .modal-footer-actions .save-card-btn svg,
-.modal-footer-actions .btn-report svg,
-.modal-footer-actions .fb-outline-icon {
+.modal-footer-actions .btn-report svg {
   width: 14px;
   height: 14px;
   flex-shrink: 0;
 }
 
+.modal.panel-detail {
+  max-width: 560px;
+  display: block;
+  padding: 1.95rem 2.05rem 1.75rem;
+}
+
+.modal.panel-detail .modal-header {
+  margin-bottom: 1.3rem;
+  padding-right: 4.25rem;
+}
+
+.modal.panel-detail .modal-orbit {
+  margin-bottom: 0.6rem;
+}
+
+.modal.panel-detail .modal-layer {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.18rem;
+  color: var(--modal-orbit-color, var(--accent2));
+  line-height: 1.05;
+}
+
+@media (min-width: 601px) {
+  .modal.panel-detail .modal-header {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .modal.panel-detail .modal-orbit {
+    display: flex;
+    justify-content: flex-start;
+  }
+
+  .modal.panel-detail .modal-layer {
+    justify-content: flex-start;
+  }
+}
+
+.modal-layer-num {
+  font-size: 2.08rem;
+  font-weight: 330;
+}
+
+.modal-layer-unit {
+  font-size: 0.96rem;
+  font-weight: 420;
+  letter-spacing: 0.04em;
+}
+
+.modal.panel-detail .modal-body {
+  gap: 0;
+  margin-bottom: 0;
+}
+
+.modal.panel-detail .modal-footer {
+  margin-top: 1.35rem;
+}
+
+.modal.panel-detail .modal-footer-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(4.8rem, 0.28fr) minmax(4.8rem, 0.28fr);
+  align-items: stretch;
+  gap: 0.6rem;
+  width: 100%;
+}
+
+.modal.panel-detail .modal-config-table-wrap {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  overflow: visible;
+}
+
+.modal.panel-detail #mLowerBlock {
+  display: none;
+}
+
+.modal-config-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.72rem;
+  width: 100%;
+}
+
+.modal-config-section {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 0.58rem;
+  row-gap: 0.58rem;
+  align-items: start;
+  padding: 0.72rem 0.82rem;
+  min-height: 6.1rem;
+  background: rgba(184,212,255,0.04);
+  border: 1px solid rgba(184,212,255,0.105);
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+
+.modal-config-section + .modal-config-section {
+  padding-top: 0.72rem;
+  border-top: 1px solid rgba(184,212,255,0.105);
+}
+
+.modal-config-marker {
+  width: 0.3rem;
+  height: 0.3rem;
+  margin-top: 0.58rem;
+  color: #9bbdff;
+  flex: 0 0 auto;
+}
+
+.modal-config-marker.is-upper {
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  background: currentColor;
+}
+
+.modal-config-marker.is-lower {
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  background: currentColor;
+}
+
+.modal-config-layer-row {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  justify-content: flex-start;
+  min-width: 0;
+}
+
+.modal-config-layer {
+  display: inline-flex;
+  align-items: center;
+  color: rgba(173, 205, 248, 0.9);
+  font-size: 0.84rem;
+  font-weight: 400;
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+}
+.modal-config-fields {
+  grid-column: 2;
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+  column-gap: 0.9rem;
+  row-gap: 0.42rem;
+  min-width: 0;
+  align-items: start;
+}
+.modal-config-fields-empty {
+  min-height: 3.35rem;
+  align-items: center;
+}
+
+.modal-config-field {
+  min-width: 0;
+}
+.modal-config-field-empty {
+  grid-column: 1 / -1;
+}
+
+.modal-config-label {
+  display: block;
+  color: var(--text-dim);
+  font-size: 0.62rem;
+  line-height: 1.35;
+  font-weight: 560;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.28rem;
+}
+
+.modal-config-main {
+  display: flex;
+  align-items: center;
+  min-height: 2.25rem;
+  color: var(--text);
+  font-size: 0.96rem;
+  font-weight: 430;
+  line-height: 1.18;
+  overflow-wrap: anywhere;
+}
+
+.modal-config-main.card-value {
+  gap: 0.34rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.modal-config-main.dir-value {
+  align-items: center;
+  overflow: visible;
+}
+
+.card-rank-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.modal-config-main.card-value .rank-icon {
+  width: 1.38rem;
+  height: 1.38rem;
+  margin-left: 0;
+  vertical-align: 0;
+  flex: 0 0 auto;
+}
+
+.modal-config-main.partner-value {
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.modal-config-main.partner-value .companion-inline {
+  width: 100%;
+  min-height: 2.25rem;
+  gap: 0.48rem;
+  align-items: center;
+}
+
+.modal-config-main.partner-value .companion-avatar {
+  width: 2.12rem;
+  height: 2.12rem;
+  border-color: rgba(184,212,255,0.54);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.24), 0 0 7px rgba(184,212,255,0.1);
+}
+
+.modal-config-main.partner-value .companion-name {
+  line-height: 1.12;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.modal-config-field.partner-field .modal-config-main {
+  color: var(--text);
+  font-size: 0.96rem;
+  font-weight: 430;
+}
+
+.modal-config-muted {
+  grid-column: 2;
+  color: var(--text-dim);
+  font-size: 0.86rem;
+  line-height: 1.6;
+}
+.modal-config-main.modal-config-muted {
+  grid-column: auto;
+}
+
+.modal-config-dir {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 1.35rem;
+  padding: 0.13rem 0.46rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  color: inherit;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.modal-config-dir.dir-順 {
+  background: rgba(184,212,255,0.055);
+  border: 1px solid rgba(184,212,255,0.34);
+  color: #dce6f4;
+}
+
+.modal-config-dir.dir-逆 {
+  background: rgba(210,220,238,0.045);
+  border: 1px solid rgba(210,220,238,0.26);
+  color: #dce6f4;
+}
+
+.modal-config-dir.dir-na {
+  background: transparent;
+  border: 0;
+  color: var(--text-dim);
+}
+
+.modal.panel-detail .modal-footer-actions .btn-fb {
+  position: relative;
+  width: auto;
+  min-width: 0;
+  background: rgba(255,255,255,0.04);
+  border-color: rgba(184,212,255,0.24);
+  color: var(--text);
+  font-weight: 500;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.018);
+}
+
+.fb-inline-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.38rem;
+  height: 1.38rem;
+  border-radius: 0.34rem;
+  border: 1px solid rgba(238,244,255,0.38);
+  background: rgba(238,244,255,0.055);
+  color: rgba(238,244,255,0.9);
+  flex: 0 0 auto;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03);
+}
+
+.fb-inline-icon svg {
+  width: 0.92rem;
+  height: 0.92rem;
+  display: block;
+}
+
+.modal.panel-detail .modal-secondary-actions {
+  display: contents;
+}
+
+.modal.panel-detail .modal-footer-actions .save-card-btn,
+.modal.panel-detail .modal-footer-actions .btn-report {
+  width: auto;
+  min-width: 0;
+}
+
+.modal.panel-detail .modal-footer-actions .btn-fb:hover {
+  border-color: var(--border-bright);
+  background: rgba(184,212,255,0.11);
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.025);
+}
+
 .info-modal {
   max-width: 560px;
-  max-height: min(680px, calc(100vh - 2rem));
+  height: min(78vh, calc(100vh - 2rem));
+  max-height: min(78vh, calc(100vh - 2rem));
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
 }
 
-.info-tabs {
-  display: flex;
-  gap: 0.55rem;
-  margin: 0 2.2rem 1.1rem 0;
+.info-modal > .modal-close {
+  top: 1.45rem;
+  right: 2.2rem;
+  width: 1.85rem;
+  height: 1.85rem;
 }
 
-.info-tab {
-  min-width: 5rem;
-  height: 2rem;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: rgba(255,255,255,0.03);
-  color: var(--text-muted);
-  font-family: 'Noto Sans TC', sans-serif;
-  font-size: 0.78rem;
-  cursor: pointer;
-  transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+.info-modal > .modal-close::before,
+.info-modal > .modal-close::after {
+  width: 0.92rem;
+  height: 1.4px;
 }
-.info-tab:hover,
-.info-tab.active {
+
+.info-modal-header {
+  flex-shrink: 0;
+  min-height: 1.9rem;
+  display: flex;
+  align-items: center;
+  padding-right: 3.25rem;
+  margin-bottom: 1.15rem;
+}
+
+.info-modal-title {
+  margin: 0;
   color: var(--text);
-  border-color: var(--border-bright);
-  background: rgba(184,212,255,0.12);
+  font-family: 'Noto Serif TC', serif;
+  font-size: 1.42rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-shadow: 0 0 22px rgba(180,210,255,0.24);
+}
+
+.info-tabs {
+  position: relative;
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.16rem;
+  margin: 0 0 1rem;
+  padding: 0.22rem;
+  border: 1px solid rgba(184,212,255,0.24);
+  border-radius: 999px;
+  background: rgba(7,16,31,0.42);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.025);
+}
+.info-tabs::before {
+  content: none;
+}
+.info-tab {
+  position: relative;
+  z-index: 1;
+  min-height: 2rem;
+  padding: 0.36rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: rgba(219,232,255,0.72);
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 0.76rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    color 0.2s ease,
+    font-weight 0.2s ease,
+    background 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+.info-tab.active {
+  color: #dbe8ff;
+  font-weight: 700;
+  border-color: rgba(184,212,255,0.48);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.13), rgba(255,255,255,0.055)),
+    rgba(145,165,202,0.13);
+  box-shadow:
+    0 0 14px rgba(160,184,224,0.10),
+    inset 0 0 0 1px rgba(255,255,255,0.045);
+}
+
+.info-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  border-top: 1px solid rgba(184,212,255,0.12);
+  padding: 0.95rem 0.45rem 0 0;
+  scrollbar-gutter: stable;
 }
 
 .info-panel {
   display: none;
 }
+
 .info-panel.active {
   display: block;
 }
 
-.info-intro {
+.info-panel.info-section {
+  border-top: 0;
+  padding-top: 0.2rem;
+}
+
+.info-section {
+  padding: 0.2rem 0 1.1rem;
+}
+
+.info-section + .info-section {
+  border-top: 1px solid rgba(255,255,255,0.08);
+  padding-top: 1.05rem;
+}
+
+.info-panel.info-section {
+  border-top: 0;
+  padding-top: 0.2rem;
+}
+
+.info-section-title {
+  margin: 0 0 0.65rem;
+  color: var(--text);
+  font-size: 0.98rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+
+.info-section-desc {
   color: var(--text-muted);
-  font-size: 0.82rem;
+  font-size: 0.88rem;
   line-height: 1.9;
 }
-.info-intro p {
+
+.info-section-desc p {
   margin: 0 0 1rem;
 }
+
+.info-highlight {
+  color: #dbeaff;
+  font-weight: 600;
+  background: linear-gradient(180deg, transparent 58%, rgba(145,190,255,0.22) 58%);
+  box-shadow: inset 0 -0.05em 0 rgba(184,212,255,0.22);
+}
+
+.info-link-actions {
+  display: flex;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+  margin: 0 0 1rem;
+}
+
 .info-link-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 0.35rem;
   min-height: 1.8rem;
   padding: 0 0.8rem;
   border-radius: 999px;
@@ -1162,8 +1815,13 @@ header {
   background: rgba(255,255,255,0.03);
   color: var(--text-muted);
   text-decoration: none;
-  font-size: 0.72rem;
+  font-size: 0.78rem;
   transition: background 0.2s ease, border-color 0.2s ease;
+}
+.info-link-icon {
+  width: 0.8rem;
+  height: 0.8rem;
+  flex: 0 0 auto;
 }
 .info-link-button:hover {
   color: var(--text);
@@ -1171,27 +1829,59 @@ header {
   border-color: var(--border-bright);
 }
 .version-history-list {
-  max-height: min(500px, calc(100vh - 12rem));
-  overflow-y: auto;
-  padding-right: 0.25rem;
+  max-height: none;
+  overflow: visible;
+  padding: 0 0.15rem;
 }
 .version-history-group {
-  padding: 0.95rem 0;
+  display: grid;
+  grid-template-columns: minmax(4.25rem, 4.8rem) minmax(0, 1fr);
+  gap: 0.78rem;
+  align-items: start;
+  padding: 1.15rem 0 1.25rem;
   border-top: 1px solid rgba(255,255,255,0.08);
 }
+.version-history-group:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
 .version-history-date {
-  color: var(--accent);
-  font-size: 0.76rem;
-  font-weight: 600;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+}
+.version-history-date::after {
+  content: "";
+  width: 3.35rem;
+  height: 2px;
+  margin-top: 0.34rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(184,212,255,0.76), rgba(132,177,255,0.34), rgba(184,212,255,0));
+}
+.version-history-year {
+  color: var(--text);
+  font-family: "Times New Roman", "Noto Serif TC", serif;
+  font-size: 0.82rem;
+  font-weight: 300;
+  letter-spacing: 0.12em;
+  line-height: 1;
+}
+.version-history-day {
+  margin-top: 0.12rem;
+  color: var(--text);
+  font-family: "Times New Roman", "Noto Serif TC", serif;
+  font-size: 1rem;
+  font-weight: 300;
   letter-spacing: 0.08em;
-  margin-bottom: 0.5rem;
+  line-height: 1.15;
 }
 .version-history-items {
   margin: 0;
   padding-left: 0;
   list-style: none;
   color: var(--text-muted);
-  font-size: 0.8rem;
+  font-size: 0.86rem;
   line-height: 1.75;
 }
 .version-history-items li {
@@ -1213,7 +1903,7 @@ header {
 .version-history-empty {
   padding: 1.5rem 0;
   color: var(--text-dim);
-  font-size: 0.8rem;
+  font-size: 0.86rem;
   text-align: center;
 }
 
@@ -1236,7 +1926,6 @@ header {
   letter-spacing: 0.05em;
 }
 .btn-fb:hover { background: rgba(147,212,255,0.38); border-color: rgba(147,212,255,0.7); }
-.btn-fb svg { width: 15px; height: 15px; }
  
 .btn-report {
   display: flex;
@@ -1260,33 +1949,69 @@ header {
 
 /* ── Tab navigation ── */
 .tab-nav {
+  --tab-slider-x: 0.28rem;
+  --tab-slider-w: calc((100% - 0.56rem - 0.16rem) / 2);
   position: relative;
   z-index: 10;
-  display: flex;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 0.7rem 1rem 0;
-  max-width: 1100px;
-  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.16rem;
+  width: min(19rem, calc(100vw - 2.5rem));
+  padding: 0.28rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(7, 16, 31, 0.62);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.02);
+  margin: 0.7rem auto 0;
+}
+.tab-nav::before {
+  content: '';
+  position: absolute;
+  top: 0.28rem;
+  left: 0;
+  width: var(--tab-slider-w);
+  height: calc(100% - 0.56rem);
+  border-radius: 999px;
+  border: 1px solid rgba(186, 205, 236, 0.72);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.055)),
+    rgba(145, 165, 202, 0.12);
+  box-shadow:
+    0 0 20px rgba(160, 184, 224, 0.18),
+    inset 0 0 0 1px rgba(255,255,255,0.055);
+  transform: translateX(var(--tab-slider-x));
+  transition:
+    transform 0.26s cubic-bezier(.22, .61, .36, 1),
+    width 0.26s cubic-bezier(.22, .61, .36, 1),
+    border-color 0.24s ease,
+    background 0.24s ease;
+  pointer-events: none;
 }
 .tab-btn {
-  padding: 0.45rem 1.4rem;
+  position: relative;
+  z-index: 1;
+  min-height: 2.35rem;
+  padding: 0.42rem 0.85rem;
   border-radius: 999px;
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   background: transparent;
   color: var(--text-muted);
   font-family: 'Noto Sans TC', sans-serif;
   font-size: 0.82rem;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
+  transition:
+    color 0.2s ease,
+    font-weight 0.2s ease,
+    background 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
   letter-spacing: 0.05em;
 }
-.tab-btn:hover { border-color: var(--border-bright); color: var(--text); }
+.tab-btn:hover { color: var(--text); }
 .tab-btn.active {
-  background: rgba(255,255,255,0.08);
-  border-color: var(--border-bright);
   color: var(--text);
-  font-weight: 500;
+  font-weight: 700;
 }
 
 /* ── Section visibility ── */
@@ -1301,13 +2026,6 @@ header {
 }
 
 /* ── Endless challenge cards ── */
-.endless-filter-panel {
-  background: var(--bg2);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 1.5rem;
-  margin-bottom: 2rem;
-}
 .endless-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -1351,6 +2069,13 @@ header {
   font-size: 0.65rem; letter-spacing: 0.1em;
   padding: 0.18rem 0.6rem; border-radius: 999px;
   border: 1px solid; font-weight: 500; display: inline-block;
+}
+.partner-badge .companion-inline {
+  gap: 0.28rem;
+}
+.partner-badge .companion-avatar {
+  width: 1.02rem;
+  height: 1.02rem;
 }
 .partner-badge[data-partner="逐光騎士"], .partner-badge[data-partner="光獵"], .partner-badge[data-partner="暗蝕國王"]
   { color: var(--col-light);   border-color: var(--col-light-border);   background: var(--col-light-bg); }
@@ -1481,25 +2206,50 @@ select.card-input option {
 }
 .folder-close:hover { color: #ffffff; }
 .folder-tabs {
+  position: relative;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0.45rem;
-  padding: 0.75rem 1rem 0;
+  gap: 0.14rem;
+  margin: 0.75rem 1rem 0;
+  padding: 0.22rem;
+  border: 1px solid rgba(184,212,255,0.24);
+  border-radius: 999px;
+  background: rgba(7,16,31,0.42);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.025);
+}
+.folder-tabs::before {
+  content: none;
 }
 .folder-tab {
-  padding: 0.42rem 0.75rem;
+  position: relative;
+  z-index: 1;
+  min-height: 2rem;
+  padding: 0.36rem 0.75rem;
   border-radius: 999px;
-  border: 1px solid rgba(184,212,255,0.24);
-  background: rgba(255,255,255,0.05);
+  border: 1px solid transparent;
+  background: transparent;
   color: rgba(219,232,255,0.72);
   font-family: 'Noto Sans TC', sans-serif;
   font-size: 0.74rem;
+  font-weight: 500;
   cursor: pointer;
+  transition:
+    color 0.2s ease,
+    font-weight 0.2s ease,
+    background 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 .folder-tab.active {
-  border-color: rgba(184,212,255,0.48);
-  background: rgba(255,255,255,0.12);
   color: #dbe8ff;
+  font-weight: 700;
+  border-color: rgba(184,212,255,0.48);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.13), rgba(255,255,255,0.055)),
+    rgba(145,165,202,0.13);
+  box-shadow:
+    0 0 14px rgba(160,184,224,0.10),
+    inset 0 0 0 1px rgba(255,255,255,0.045);
 }
 .folder-toolbar {
   display: flex;
@@ -1637,6 +2387,75 @@ select.card-input option {
 }
 
 @media (max-width: 600px) {
+  .info-modal {
+    height: min(78vh, calc(100vh - 2rem));
+    max-height: min(78vh, calc(100vh - 2rem));
+  }
+  .info-modal > .modal-close {
+    top: 1.38rem;
+    right: 1.95rem;
+    width: 1.75rem;
+    height: 1.75rem;
+  }
+  .info-modal > .modal-close::before,
+  .info-modal > .modal-close::after {
+    width: 0.86rem;
+  }
+  .info-modal-header {
+    min-height: 1.8rem;
+    padding-right: 3rem;
+    margin-bottom: 1rem;
+  }
+  .info-modal-title {
+    font-size: 1.48rem;
+  }
+  .info-tabs {
+    margin-bottom: 0.85rem;
+  }
+  .info-tab {
+    min-height: 1.9rem;
+    padding: 0.32rem 0.28rem;
+    font-size: 0.72rem;
+    letter-spacing: 0.02em;
+  }
+  .info-content {
+    padding: 0.85rem 0.4rem 0 0;
+  }
+  .version-history-list {
+    padding-right: 0.1rem;
+  }
+  .version-history-group {
+    grid-template-columns: 1fr;
+    gap: 0.58rem;
+    padding: 1.05rem 0 1.15rem;
+  }
+  .version-history-date {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 0.16rem;
+  }
+  .version-history-date::after {
+    width: 3.1rem;
+    margin-top: 0;
+    transform: translateY(-0.18rem);
+  }
+  .version-history-day {
+    margin-top: 0;
+    font-size: 0.94rem;
+    letter-spacing: 0.06em;
+  }
+  .version-history-year {
+    font-size: 0.94rem;
+    letter-spacing: 0.04em;
+  }
+  .version-history-year::after {
+    content: ".";
+  }
+  .version-history-items {
+    font-size: 0.9rem;
+    line-height: 1.7;
+  }
+
   .local-folder-panel {
     right: 1rem;
     top: 3.85rem;
@@ -1647,7 +2466,8 @@ select.card-input option {
   .back-to-top { right: 1rem; bottom: 3.45rem; width: 2rem; height: 2rem; padding: 0; }
   .back-to-bottom { right: 1rem; bottom: 1rem; width: 2rem; height: 2rem; padding: 0; }
 
-  .filter-panel { padding: 1rem; }
+  .filter-panel,
+  .endless-filter-panel { padding: 1rem; }
   .filter-header { margin-bottom: 0.875rem; }
   .filter-title { font-size: 0.76rem; letter-spacing: 0.2em; }
   .btn-reset-compact {
@@ -1779,6 +2599,30 @@ select.card-input option {
   .viewed-card .endless-card-header .card-meta-right {
     padding-right: 2.15rem;
   }
+  .layer-label {
+    font-size: 0.58rem;
+    margin-bottom: 0.26rem;
+  }
+  .layer-head {
+    margin-bottom: 0.28rem;
+  }
+  .layer-data-grid {
+    gap: 0.14rem;
+  }
+  .layer-data-cell + .layer-data-cell {
+    padding-left: 0;
+  }
+  .card-name {
+    font-size: 0.8rem;
+  }
+  .rank-icon {
+    width: 1.16em;
+    height: 1.16em;
+    margin-left: 0.26rem;
+  }
+  .partner-name {
+    font-size: 0.8rem;
+  }
   .modal.viewed-detail::before {
     width: 3.15rem;
     height: 3.15rem;
@@ -1803,7 +2647,115 @@ select.card-input option {
     top: 1.35rem;
     right: 3.35rem;
   }
+  .modal.panel-detail {
+    max-width: 100%;
+    display: block;
+  }
+  .modal.panel-detail .modal-header {
+    padding-right: 3.65rem;
+    margin-bottom: 1.2rem;
+  }
+  .modal.panel-detail .modal-layer {
+    gap: 0.16rem;
+  }
+  .modal-layer-num {
+    font-size: 1.72rem;
+    font-weight: 330;
+  }
+  .modal-layer-unit {
+    font-size: 0.86rem;
+    font-weight: 420;
+  }
+  .modal-config-detail {
+    gap: 0.72rem;
+  }
+  .modal-config-section {
+    column-gap: 0.52rem;
+    row-gap: 0.52rem;
+    padding: 0.7rem 0.76rem;
+    min-height: 6.1rem;
+  }
+  .modal-config-section + .modal-config-section {
+    padding-top: 0.7rem;
+  }
+  .modal-config-marker {
+    width: 0.28rem;
+    height: 0.28rem;
+    margin-top: 0.54rem;
+  }
+  .modal-config-layer-row {
+    gap: 0.42rem;
+  }
+  .modal-config-layer {
+    font-size: 0.74rem;
+    font-weight: 400;
+    letter-spacing: 0.1em;
+  }
+  .modal-config-fields {
+    grid-template-columns: minmax(0, 0.94fr) minmax(0, 1.06fr);
+    column-gap: 0.48rem;
+    row-gap: 0.36rem;
+  }
+  .modal-config-field.dir-field {
+    grid-column: 1 / -1;
+  }
+  .modal-config-field.partner-field {
+    grid-column: auto;
+  }
+  .modal-config-label {
+    display: block;
+    font-size: 0.55rem;
+    font-weight: 560;
+  }
+  .modal-config-main {
+    font-size: 0.78rem;
+    font-weight: 430;
+    min-height: 2.05rem;
+    line-height: 1.18;
+  }
+  .modal-config-main.card-value {
+    gap: 0.28rem;
+  }
+  .modal-config-main.card-value .rank-icon {
+    width: 1.06rem;
+    height: 1.06rem;
+  }
+  .modal-config-main.partner-value .companion-avatar {
+    width: 1.48rem;
+    height: 1.48rem;
+  }
+  .modal-config-main.partner-value .companion-inline {
+    min-height: 2.05rem;
+    gap: 0.32rem;
+  }
+  .modal-config-field.partner-field .modal-config-main {
+    font-size: 0.78rem;
+    font-weight: 430;
+  }
+  .modal-config-dir {
+    min-width: 0;
+    min-height: 1.28rem;
+    padding: 0.12rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.64rem;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+  }
+  .fb-inline-icon {
+    width: 1.3rem;
+    height: 1.3rem;
+    border-radius: 0.3rem;
+  }
+  .fb-inline-icon svg {
+    width: 0.86rem;
+    height: 0.86rem;
+  }
   .modal-footer-actions {
+    flex-direction: column;
+    gap: 0.55rem;
+  }
+  .modal.panel-detail .modal-footer-actions {
+    display: flex;
     flex-direction: column;
     gap: 0.55rem;
   }
@@ -1812,7 +2764,21 @@ select.card-input option {
     width: 100%;
     min-height: 2.55rem;
   }
+  .modal.panel-detail .modal-footer-actions .btn-fb {
+    flex: none;
+    width: 100%;
+  }
+  .modal.panel-detail .modal-footer-actions .save-card-btn,
+  .modal.panel-detail .modal-footer-actions .btn-report {
+    flex: 1 1 0;
+    width: auto;
+  }
   .modal-secondary-actions {
+    width: 100%;
+    gap: 0.55rem;
+  }
+  .modal.panel-detail .modal-secondary-actions {
+    display: flex;
     width: 100%;
     gap: 0.55rem;
   }
@@ -1825,8 +2791,22 @@ select.card-input option {
   .endless-grid { grid-template-columns: 1fr; }
 
   /* tab nav fits smaller screens */
-  .tab-nav { gap: 0.35rem; padding: 0.65rem 0.75rem 0; }
-  .tab-btn { font-size: 0.75rem; padding: 0.4rem 1rem; }
+  .tab-nav {
+    --tab-slider-x: 0.24rem;
+    --tab-slider-w: calc((100% - 0.48rem - 0.16rem) / 2);
+    width: min(16.5rem, calc(100vw - 2rem));
+    padding: 0.24rem;
+    margin-top: 0.65rem;
+  }
+  .tab-nav::before {
+    top: 0.24rem;
+    height: calc(100% - 0.48rem);
+  }
+  .tab-btn {
+    min-height: 2.18rem;
+    font-size: 0.78rem;
+    padding: 0.36rem 0.65rem;
+  }
 }
 
 </style>
@@ -1843,7 +2823,7 @@ select.card-input option {
 </header>
 
 <!-- Tab navigation -->
-<div class="tab-nav">
+<div class="tab-nav" data-active="panel">
   <button class="tab-btn active" onclick="switchTab('panel', this)">軌道</button>
   <button class="tab-btn" onclick="switchTab('endless', this)">無盡挑戰</button>
 </div>
@@ -1991,7 +2971,6 @@ select.card-input option {
 <div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
   <div class="modal" id="modal">
     <button class="modal-close" onclick="closeModalDirect()" aria-label="關閉">✕</button>
-    <div class="modal-actions-slot" id="mActions"></div>
     <div class="modal-header">
       <div class="modal-orbit" id="mOrbit"></div>
       <div class="modal-layer" id="mLayer"></div>
@@ -2012,18 +2991,51 @@ select.card-input option {
 <div class="modal-overlay" id="infoOverlay" onclick="closeInfoModal(event)">
   <div class="modal info-modal">
     <button class="modal-close" onclick="closeInfoModalDirect()" aria-label="關閉">✕</button>
-    <div class="info-tabs">
-      <button class="info-tab active" data-info-tab="intro" onclick="switchInfoTab('intro')">介紹</button>
-      <button class="info-tab" data-info-tab="history" onclick="switchInfoTab('history')">版本紀錄</button>
+    <div class="info-modal-header">
+      <h2 class="info-modal-title">關於面板資料庫</h2>
     </div>
-    <div class="info-panel info-intro active" id="infoPanelIntro">
-      <p>本站收錄「戀與深空戰鬥討論群_臉書面板分享專區」的戰鬥資料，包含開放穩定軌道、開放波動軌道、定向軌道及無盡挑戰等，獵人可以在此進行查詢，也歡迎加入下方專區分享、存檔您的通關資料</p>
-      <a class="info-link-button" href="https://www.facebook.com/share/g/18qcHFWDrj/" target="_blank" rel="noopener">前往面板分享專區</a>
+    <div class="info-tabs" data-active="guide" role="tablist" aria-label="資料庫資訊分類">
+      <button class="info-tab active" type="button" role="tab" aria-selected="true" data-tab="guide" onclick="switchInfoTab('guide')">使用說明</button>
+      <button class="info-tab" type="button" role="tab" aria-selected="false" data-tab="intro" onclick="switchInfoTab('intro')">網站介紹</button>
+      <button class="info-tab" type="button" role="tab" aria-selected="false" data-tab="version" onclick="switchInfoTab('version')">版本紀錄</button>
     </div>
-    <div class="info-panel" id="infoPanelHistory">
-      <div class="version-history-list" id="versionHistoryList">
-        <div class="version-history-empty">版本紀錄載入中…</div>
-      </div>
+    <div class="info-content">
+      <section class="info-section info-panel active" id="infoPanelGuide" data-panel="guide" role="tabpanel">
+        <div class="info-section-desc">
+          <p><span class="info-highlight">戀與深空戰鬥討論群｜面板資料庫</span>提供各軌道、各關卡的通關紀錄查詢，助力獵人們更有效率地通關。獵人可以先選擇欲查詢的項目，接著進行進階篩選，尋找符合自身隊伍配置的結果；所有的通關資料卡片皆提供收藏之功能，首頁右上角的資料夾可以查看<span class="info-highlight">收藏</span>及<span class="info-highlight">瀏覽記錄</span>。</p>
+          <p>以下簡要介紹面板的基本概念：面板指的是<span class="info-highlight">隊伍的屬性資訊</span>，玩家間交流關卡的通關資訊時，經常會直接使用面板截圖進行討論。獵人可透過編隊畫面中右上角的<span class="info-highlight">屬性詳情</span>查看面板，該頁面會顯示當前隊伍的生命、攻擊、防禦、暴擊、暴傷、誓約增傷、誓約回能、加速回能及虛弱增傷數值。</p>
+          <p>當戰鬥卡關時，您可以在這個資料庫搜尋<span class="info-highlight">相同日卡、相同階數、相同搭檔</span>的面板進行參考，了解自身戰隊的情形。若面板較低，可將通關面板的數值視為目標進行養成，持續提升面板；若面板接近或是溢出，則可以考慮調整手法，或是繼續提升面板至更有餘裕的程度。</p>
+        </div>
+      </section>
+      <section class="info-section info-panel" id="infoPanelIntro" data-panel="intro" role="tabpanel" hidden>
+        <div class="info-section-desc">
+          <p>本社團為LINE匿名社群<span class="info-highlight">戀與深空戰鬥討論群</span>所有，收錄Facebook社團<span class="info-highlight">戀與深空戰鬥討論群_臉書面板分享專區</span>的開放穩定軌道、開放波動軌道、定向軌道及無盡挑戰通關資料，提供各位玩家便捷的查詢管道；我們相信每一份通關資料都有其參考價值，也珍視群友每一次的分享，若您有意願貢獻通關資料，歡迎申請加入分享專區。</p>
+          <div class="info-link-actions">
+            <a class="info-link-button" href="https://www.facebook.com/share/g/1EHo4wBBby/" target="_blank" rel="noopener">
+              <svg class="info-link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M10 13a5 5 0 0 0 7.07 0l2.12-2.12a5 5 0 0 0-7.07-7.07l-1.21 1.21"></path>
+                <path d="M14 11a5 5 0 0 0-7.07 0L4.81 13.12a5 5 0 0 0 7.07 7.07l1.21-1.21"></path>
+              </svg>
+              面板分享專區
+            </a>
+          </div>
+          <p>如需參考日冕、芯核及戰鬥攻略或其他討論，請移步<span class="info-highlight">戀與深空戰鬥討論群</span>。</p>
+          <div class="info-link-actions">
+            <a class="info-link-button" href="https://line.me/ti/g2/gw9Ds6tjgN1mPRRCKbc7pLofd4Wzd1MJoR71eQ" target="_blank" rel="noopener">
+              <svg class="info-link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M10 13a5 5 0 0 0 7.07 0l2.12-2.12a5 5 0 0 0-7.07-7.07l-1.21 1.21"></path>
+                <path d="M14 11a5 5 0 0 0-7.07 0L4.81 13.12a5 5 0 0 0 7.07 7.07l1.21-1.21"></path>
+              </svg>
+              戀與深空戰鬥討論群
+            </a>
+          </div>
+        </div>
+      </section>
+      <section class="info-section info-panel" id="infoPanelVersion" data-panel="version" role="tabpanel" hidden>
+        <div class="version-history-list" id="versionHistoryList">
+          <div class="version-history-empty">版本紀錄載入中…</div>
+        </div>
+      </section>
     </div>
   </div>
 </div>
@@ -2058,10 +3070,162 @@ let localFolder = { favorites: [], history: [] };
 let CHANGELOG_DATA = [];
 let changelogLoaded = false;
 let changelogLoadError = false;
+let appLoading = true;
+let bootLoadFailed = false;
+const BOOT_CSV_TOTAL = 3;
+const bootProgress = {
+  csvDone: 0,
+  csvTotal: BOOT_CSV_TOTAL,
+  imageDone: 0,
+  imageTotal: null,
+  stage: '資料載入中'
+};
 const LOCAL_FOLDER_KEY = 'ladsbattle_local_folder_v1';
 
-function loadingMarkup() {
-  return '<span class="loading-inline"><span class="loading-spinner"></span><span class="loading-text">資料載入中…</span></span>';
+function loadingMarkup(message = '資料載入中…') {
+  return `<span class="loading-inline"><span class="loading-spinner"></span><span class="loading-text">${escapeHtml(message)}</span></span>`;
+}
+
+function getBootProgressPercent() {
+  const csvTotal = Math.max(bootProgress.csvTotal, 1);
+  const csvRatio = Math.min(bootProgress.csvDone / csvTotal, 1);
+  const csvWeight = 45;
+  const imageWeight = 55;
+
+  if (bootProgress.imageTotal === null) {
+    return Math.round(csvRatio * csvWeight);
+  }
+
+  const imageRatio = bootProgress.imageTotal === 0
+    ? 1
+    : Math.min(bootProgress.imageDone / bootProgress.imageTotal, 1);
+  return Math.min(100, Math.round((csvRatio * csvWeight) + (imageRatio * imageWeight)));
+}
+
+function loadProgressMarkup() {
+  const percent = getBootProgressPercent();
+  return `
+    <span class="loading-inline boot-progress-inline">
+      <span class="loading-spinner"></span>
+      <span class="loading-text">資料載入中…</span>
+      <span class="load-progress" role="status" aria-label="資料載入進度"><strong>${percent}%</strong></span>
+    </span>`;
+}
+
+function updateBootProgressElement(element) {
+  if (!element) return;
+  const percentText = `${getBootProgressPercent()}%`;
+  const progressText = element.querySelector('.load-progress strong');
+  if (progressText) {
+    progressText.textContent = percentText;
+    return;
+  }
+  element.innerHTML = loadProgressMarkup();
+}
+
+function renderBootProgress() {
+  if (!appLoading || bootLoadFailed) return;
+  updateBootProgressElement(document.getElementById('resultsInfo'));
+  updateBootProgressElement(document.getElementById('endlessInfo'));
+}
+
+function setSearchControlsDisabled(disabled) {
+  document.body.classList.toggle('is-app-loading', disabled);
+  document.querySelectorAll(`
+    .tab-nav .tab-btn,
+    .filter-panel button,
+    .filter-panel input,
+    .endless-filter-panel button,
+    .endless-filter-panel input,
+    .endless-filter-panel select
+  `).forEach(el => { el.disabled = disabled; });
+  if (!disabled) updateLayerInputState();
+}
+
+function markCsvLoaded() {
+  bootProgress.csvDone += 1;
+  bootProgress.stage = '資料載入中';
+  renderBootProgress();
+}
+
+async function fetchCsvResource(url, parser, onSuccess) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`CSV request failed: ${res.status}`);
+  const text = await res.text();
+  onSuccess(parser(text));
+  markCsvLoaded();
+}
+
+function rankImageSrcFromCard(card) {
+  const text = String(card || '').trim();
+  if (text === '無套裝') return '';
+  const match = text.match(/^([0-3])階/);
+  return match ? `assets/ranks/R${match[1]}.png` : '';
+}
+
+function addCompanionImage(urls, partner) {
+  const text = String(partner || '').trim();
+  if (!text || text === 'N/A') return;
+  urls.add(`assets/companions/${encodeURIComponent(text)}.png`);
+}
+
+function addRankImage(urls, card) {
+  const src = rankImageSrcFromCard(card);
+  if (src) urls.add(src);
+}
+
+function collectInitialImageUrls() {
+  const urls = new Set();
+  DATA.forEach(row => {
+    addRankImage(urls, row.upperCard);
+    addRankImage(urls, row.lowerCard);
+    addCompanionImage(urls, row.upperPartner);
+    addCompanionImage(urls, row.lowerPartner);
+  });
+  ENDLESS_ALL.forEach(row => {
+    addRankImage(urls, row.card);
+    addCompanionImage(urls, row.partner);
+  });
+  return [...urls];
+}
+
+function preloadImage(url) {
+  return new Promise(resolve => {
+    const image = new Image();
+    image.onload = () => resolve({ url, ok: true });
+    image.onerror = () => resolve({ url, ok: false });
+    image.src = url;
+  });
+}
+
+async function preloadInitialImages() {
+  const urls = collectInitialImageUrls();
+  bootProgress.stage = '資料載入中';
+  bootProgress.imageTotal = urls.length;
+  bootProgress.imageDone = 0;
+  renderBootProgress();
+  const results = await Promise.all(urls.map(async url => {
+    const result = await preloadImage(url);
+    bootProgress.imageDone += 1;
+    renderBootProgress();
+    return result;
+  }));
+  const failed = results.filter(result => !result.ok);
+  if (failed.length > 0) {
+    console.warn('Some preload images failed:', failed.map(result => result.url));
+  }
+}
+
+function showBootLoadError() {
+  bootLoadFailed = true;
+  appLoading = true;
+  setSearchControlsDisabled(true);
+  stopPreviewAutoScroll();
+  const message = '⚠ 資料載入失敗，請重新整理頁面';
+  document.getElementById('resultsInfo').innerHTML = message;
+  document.getElementById('endlessInfo').innerHTML = message;
+  document.getElementById('cardsGrid').replaceChildren();
+  document.getElementById('endlessGrid').replaceChildren();
 }
 
 function fadeSwap(key, elements, update, afterUpdate) {
@@ -2170,30 +3334,19 @@ function parseChangelogCSV(text) {
 async function init() {
   loadLocalFolder();
   renderFolderPanel();
+  updatePrimaryTabSlider();
   const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTfNvGSQbmwwXodVzmhuZfOAGIIE634hWTA6V1CTaQlF272v3VRJ5t_F7OfSKPH0qbBQbUSvLlQnw3x/pub?output=csv';
   const ENDLESS_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTfNvGSQbmwwXodVzmhuZfOAGIIE634hWTA6V1CTaQlF272v3VRJ5t_F7OfSKPH0qbBQbUSvLlQnw3x/pub?gid=1577067344&single=true&output=csv';
   const CHANGELOG_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTfNvGSQbmwwXodVzmhuZfOAGIIE634hWTA6V1CTaQlF272v3VRJ5t_F7OfSKPH0qbBQbUSvLlQnw3x/pub?gid=1820828638&single=true&output=csv';
-
-  // fetch last updated
   const SHEET_FILE_ID = '19RqMAlpyi1g9pXyJ1azm45pxfjvxRqxJOUCdsQpHKDo';
   const DRIVE_API_KEY = 'AIzaSyAzbzHaKnhio4gomMkPm-lppgkDpBj6TIw';
 
-  document.getElementById('resultsInfo').innerHTML = loadingMarkup();
-  document.getElementById('endlessInfo').innerHTML = loadingMarkup();
+  appLoading = true;
+  bootLoadFailed = false;
+  setSearchControlsDisabled(true);
+  renderBootProgress();
 
-  try {
-    const res = await fetch(CSV_URL);
-    const text = await res.text();
-    DATA = parseCSV(text);
-    panelPreviewData = samplePanelPreviewData();
-    applyFilters();
-  } catch (err) {
-    document.getElementById('resultsInfo').innerHTML = '⚠ 資料載入失敗，請重新整理頁面';
-    console.error(err);
-  }
-
-  // fetch last updated, show in footer
-  try {
+  const updateLastUpdated = async () => {
     const metaUrl = `https://www.googleapis.com/drive/v3/files/${SHEET_FILE_ID}?fields=modifiedTime&key=${DRIVE_API_KEY}`;
     const metaRes = await fetch(metaUrl);
     const meta = await metaRes.json();
@@ -2202,37 +3355,46 @@ async function init() {
       const formatted = formatTaipeiDateTime(meta.modifiedTime);
       lastUpdatedEl.textContent = `Last Updated: ${formatted} (UTC+8)`;
     }
-  } catch (err) {
-    console.error('Last Updated fetch failed:', err);
-  }
+  };
+  updateLastUpdated().catch(err => console.error('Last Updated fetch failed:', err));
 
   try {
-    const res = await fetch(ENDLESS_CSV_URL);
-    const text = await res.text();
-    ENDLESS_ALL = parseEndlessCSV(text);
-    ENDLESS_DATA = [...ENDLESS_ALL];
+    const csvTasks = [
+      fetchCsvResource(CSV_URL, parseCSV, rows => { DATA = rows; }),
+      fetchCsvResource(ENDLESS_CSV_URL, parseEndlessCSV, rows => {
+        ENDLESS_ALL = rows;
+        ENDLESS_DATA = [...ENDLESS_ALL];
+      }),
+      fetchCsvResource(CHANGELOG_CSV_URL, parseChangelogCSV, rows => {
+        CHANGELOG_DATA = rows;
+        changelogLoaded = true;
+        renderVersionHistory();
+      }).catch(err => {
+        changelogLoadError = true;
+        markCsvLoaded();
+        renderVersionHistory();
+        console.error('Maintenance history fetch failed:', err);
+      })
+    ];
+
+    await Promise.all(csvTasks);
+    panelPreviewData = samplePanelPreviewData();
     endlessPreviewData = sampleEndlessPreviewData();
+    await preloadInitialImages();
+
+    appLoading = false;
+    setSearchControlsDisabled(false);
     activePartner = null;
+    applyFilters();
     applyEndlessFilters();
   } catch (err) {
-    document.getElementById('endlessInfo').innerHTML = '⚠ 資料載入失敗，請重新整理頁面';
+    showBootLoadError();
     console.error(err);
-  }
-
-  try {
-    const res = await fetch(CHANGELOG_CSV_URL);
-    const text = await res.text();
-    CHANGELOG_DATA = parseChangelogCSV(text);
-    changelogLoaded = true;
-    renderVersionHistory();
-  } catch (err) {
-    changelogLoadError = true;
-    renderVersionHistory();
-    console.error('Maintenance history fetch failed:', err);
   }
 }
 
 function selectOrbit(btn) {
+  if (appLoading) return;
   const orbit = btn.dataset.orbit;
   activeLayerFilters = { upper: [], lower: [] };
   clearLayerInput();
@@ -2295,6 +3457,7 @@ function updateLayerInputState() {
 }
 
 function validateLayer() {
+  if (appLoading) return;
   const val = document.getElementById('layerInput').value.trim();
   const errEl = document.getElementById('layerError');
   const inp = document.getElementById('layerInput');
@@ -2324,6 +3487,7 @@ function validateLayer() {
 }
 
 function onLayerInput() {
+  if (appLoading) return;
   activeLayerFilters = { upper: [], lower: [] };
   validateLayer();
 }
@@ -2612,14 +3776,14 @@ function reportButton(reportUrl) {
     </a>`;
 }
 
-function modalFooterActions(link, folderItem, reportUrl) {
+function modalFooterActions(link, folderItem, reportUrl, hasVideo = false) {
+  const videoText = hasVideo
+    ? '<span class="btn-video-inline"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="7 4 19 12 7 20 7 4"/></svg>附影片</span>'
+    : '';
   return `
     <div class="modal-footer-actions">
       <a href="${escapeHtml(safeExternalUrl(link))}" target="_blank" rel="noopener" class="btn-fb">
-        <svg class="fb-outline-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M15.5 4.5h-2.2c-2.1 0-3.3 1.3-3.3 3.4V10H8v3h2v6.5h3V13h2.1l0.5-3H13V8.1c0-0.9 0.4-1.4 1.4-1.4h1.1V4.5z"/>
-        </svg>
-        前往Facebook查看
+        <span>查看面板詳情</span>${videoText}
       </a>
       <div class="modal-secondary-actions">
         ${favoriteButton(folderItem)}
@@ -2640,6 +3804,18 @@ function groupChangelogByDate(items) {
   return [...groups.entries()].map(([date, notes]) => ({ date, notes }));
 }
 
+function formatChangelogDate(date) {
+  return String(date || '').replace(/-/g, '.');
+}
+
+function formatChangelogDateParts(date) {
+  const [year = '', month = '', day = ''] = String(date || '').split('-');
+  return {
+    year,
+    day: month && day ? `${month}.${day}` : formatChangelogDate(date)
+  };
+}
+
 function renderVersionHistory() {
   const list = document.getElementById('versionHistoryList');
   if (!list) return;
@@ -2655,27 +3831,43 @@ function renderVersionHistory() {
     list.innerHTML = '<div class="version-history-empty">目前尚無版本紀錄。</div>';
     return;
   }
-  list.innerHTML = groupChangelogByDate(CHANGELOG_DATA).map(group => `
+  list.innerHTML = groupChangelogByDate(CHANGELOG_DATA).map(group => {
+    const dateParts = formatChangelogDateParts(group.date);
+    return `
     <div class="version-history-group">
-      <div class="version-history-date">${escapeHtml(group.date)}</div>
+      <div class="version-history-date" aria-label="${escapeHtml(formatChangelogDate(group.date))}">
+        <span class="version-history-year">${escapeHtml(dateParts.year)}</span>
+        <span class="version-history-day">${escapeHtml(dateParts.day)}</span>
+      </div>
       <ul class="version-history-items">
         ${group.notes.map(note => `<li>${escapeHtml(note)}</li>`).join('')}
       </ul>
     </div>
-  `).join('');
+  `;
+  }).join('');
 }
 
 function switchInfoTab(tab) {
+  const activeTab = ['guide', 'intro', 'version'].includes(tab) ? tab : 'guide';
+  document.querySelector('.info-tabs')?.setAttribute('data-active', activeTab);
   document.querySelectorAll('.info-tab').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.infoTab === tab);
+    const isActive = btn.dataset.tab === activeTab;
+    btn.classList.toggle('active', isActive);
+    btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
   });
-  document.getElementById('infoPanelIntro')?.classList.toggle('active', tab === 'intro');
-  document.getElementById('infoPanelHistory')?.classList.toggle('active', tab === 'history');
-  if (tab === 'history') renderVersionHistory();
+  document.querySelectorAll('.info-panel').forEach(panel => {
+    const isActive = panel.dataset.panel === activeTab;
+    panel.classList.toggle('active', isActive);
+    panel.hidden = !isActive;
+  });
+  const infoContent = document.querySelector('.info-content');
+  if (infoContent) infoContent.scrollTop = 0;
+  if (activeTab === 'version') renderVersionHistory();
 }
 
-function openInfoModal(tab = 'intro') {
-  switchInfoTab(tab);
+function openInfoModal() {
+  switchInfoTab('guide');
+  renderVersionHistory();
   document.getElementById('infoOverlay')?.classList.add('show');
 }
 
@@ -2740,6 +3932,7 @@ function renderFolderPanel() {
   const list = document.getElementById('folderList');
   const clearBtn = document.getElementById('folderClearBtn');
   if (!panel || !list || !clearBtn) return;
+  document.querySelector('.folder-tabs')?.setAttribute('data-active', activeFolderTab);
   document.querySelectorAll('.folder-tab').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.tab === activeFolderTab);
   });
@@ -2765,6 +3958,7 @@ function renderFolderPanel() {
 }
 
 function toggleDynamicFilter(side, type, value) {
+  if (appLoading) return;
   const filters = activeLayerFilters[side];
   const idx = filters.findIndex(f => f.type === type && f.value === value);
   if (idx >= 0) {
@@ -2782,6 +3976,7 @@ function toggleDynamicFilterFromButton(btn) {
 }
 
 function clearDynamicFilters() {
+  if (appLoading) return;
   activeLayerFilters = { upper: [], lower: [] };
   applyFilters();
 }
@@ -2832,6 +4027,7 @@ function matchesLayerFilters(d, side) {
 }
 
 function applyFilters() {
+  if (appLoading) return;
   if (!layerOK) {
     clearPanelResultsForInvalidLayer();
     return;
@@ -2859,6 +4055,7 @@ function applyFilters() {
 }
 
 function resetFilters() {
+  if (appLoading) return;
   activeOrbit = null;
   activeLayerFilters = { upper: [], lower: [] };
   document.querySelectorAll('#orbitChips .chip').forEach(c => c.classList.remove('active'));
@@ -2920,12 +4117,9 @@ function panelCardMarkup(d, action, previewType = '', previewIndex = null) {
     <div class="panel-card${viewedCardClass(folderItem)}" data-view-key="${escapeHtml(encodedItemKey(folderItem))}" data-orbit="${orbit}"${previewAttrs}${actionAttr}>
       ${viewedCardMarkup(folderItem)}
       <div class="card-orbit-bar">
-        <div class="card-labels">
+        <div class="card-labels panel-card-title">
           <span class="orbit-badge" data-orbit="${orbit}">${orbitLabel}</span>
-          ${d.hasVideo ? '<span class="video-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg> 附影片</span>' : ''}
-        </div>
-        <div class="card-meta-right">
-          <span class="layer-num">${d.layer} 層</span>
+          <span class="layer-num">${escapeHtml(String(d.layer))} 層</span>
         </div>
       </div>
       <div class="layer-section">
@@ -2933,8 +4127,8 @@ function panelCardMarkup(d, action, previewType = '', previewIndex = null) {
         ${cardLayerBlock(d.lowerCard, d.lowerPartner, d.lowerDir, '▼ 下層')}
       </div>
       <div class="card-footer">
-        <span></span>
-        <span class="link-hint">點擊查看詳情 →</span>
+        ${d.hasVideo ? videoBadgeMarkup() : '<span></span>'}
+        <span class="link-hint">點擊查看紀錄 →</span>
       </div>
     </div>`;
 }
@@ -3109,16 +4303,27 @@ function setupPreviewScroll(selector, itemCount) {
 }
 
 function cardLayerBlock(card, partner, dir, label) {
-  if (card === 'N/A') return `<div class="layer-block"><div class="layer-label">${escapeHtml(label)}</div><div class="layer-info"><span class="na-text">單層面板</span></div></div>`;
+  if (card === 'N/A') return `<div class="layer-block layer-block-empty">
+    <div class="layer-head">
+      <div class="layer-label">${escapeHtml(label)}</div>
+      <span class="dir-tag dir-placeholder" aria-hidden="true">順譜</span>
+    </div>
+    <div class="layer-data-grid layer-data-grid-empty">
+      <div class="layer-data-cell layer-data-empty"><div class="na-text">單層面板</div></div>
+    </div>
+  </div>`;
   const safeDir = dir === '順' || dir === '逆' ? dir : '';
   const dirHtml = safeDir
-    ? `<span class="dir-tag dir-${safeDir}" style="margin-left:auto">${safeDir}譜</span>`
+    ? `<span class="dir-tag dir-${safeDir}">${safeDir}譜</span>`
     : '';
   return `<div class="layer-block">
-    <div class="layer-label">${escapeHtml(label)}</div>
-    <div class="layer-info">
-      <div><div class="card-name">${escapeHtml(card)}</div><div class="partner-name">${escapeHtml(partner)}</div></div>
+    <div class="layer-head">
+      <div class="layer-label">${escapeHtml(label)}</div>
       ${dirHtml}
+    </div>
+    <div class="layer-data-grid">
+      <div class="layer-data-cell"><div class="card-name">${escapeHtml(card)}${rankIconMarkup(card)}</div></div>
+      <div class="layer-data-cell"><div class="partner-name">${escapeHtml(partner)}</div></div>
     </div>
   </div>`;
 }
@@ -3152,12 +4357,93 @@ function dirTag(dir) {
   return safeDir ? `<span class="dir-tag dir-${safeDir}">${safeDir}</span>` : '<span class="dir-tag dir-na">—</span>';
 }
 
-function modalBlock(card, partner, dir) {
-  if (card === 'N/A') return '<div class="modal-row"><span class="na-text" style="color:var(--text-dim)">單層面板（無此層配置）</span></div>';
-  const dirText = dir === '順' ? '順譜' : dir === '逆' ? '逆譜' : '—';
-  return `<div class="modal-row"><span class="modal-label">日卡</span><span class="modal-val">${escapeHtml(card)}</span></div>
-    <div class="modal-row"><span class="modal-label">搭檔</span><span class="modal-val">${escapeHtml(partner)}</span></div>
-    <div class="modal-row"><span class="modal-label">對譜情形</span><span class="modal-val">${dirText}</span></div>`;
+function videoBadgeMarkup() {
+  return '<span class="video-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>附影片</span>';
+}
+
+function rankIconMarkup(card) {
+  const text = String(card || '').trim();
+  if (text === '無套裝') return '';
+  const match = text.match(/^([0-3])階/);
+  if (!match) return '';
+  const rank = match[1];
+  return `<img class="rank-icon" src="assets/ranks/R${rank}.png" alt="${rank}階" loading="lazy">`;
+}
+
+function companionIconMarkup(partner) {
+  const text = String(partner || '').trim();
+  if (!text) return '';
+  const src = `assets/companions/${encodeURIComponent(text)}.png`;
+  return `<img class="companion-avatar" src="${src}" alt="" aria-hidden="true" loading="lazy" onerror="this.remove()">`;
+}
+
+function companionInlineMarkup(partner) {
+  const text = String(partner || '').trim();
+  if (!text) return '';
+  return `<span class="companion-inline">${companionIconMarkup(text)}<span class="companion-name">${escapeHtml(text)}</span></span>`;
+}
+
+function modalLayerTitleMarkup(label) {
+  return `<span class="modal-config-layer">${escapeHtml(label)}</span>`;
+}
+
+function modalDirFieldMarkup(dir) {
+  if (dir === '順' || dir === '逆') {
+    return `<span class="modal-config-dir dir-${dir}">${dir}譜</span>`;
+  }
+  return '<span class="modal-config-dir dir-na">—</span>';
+}
+
+function modalDirBadgeMarkup(dir, hidden = false) {
+  const hiddenAttr = hidden ? ' aria-hidden="true"' : '';
+  const hiddenClass = hidden ? ' dir-placeholder' : '';
+  if (dir === '順' || dir === '逆') {
+    return `<span class="modal-config-dir dir-${dir}${hiddenClass}"${hiddenAttr}>${dir}譜</span>`;
+  }
+  return `<span class="modal-config-dir dir-na${hiddenClass}"${hiddenAttr}>—</span>`;
+}
+
+function modalConfigRow(label, card, partner, dir) {
+  if (card === 'N/A') {
+    const markerClass = label === '上層' ? 'is-upper' : 'is-lower';
+    return `<div class="modal-config-section modal-config-section-empty">
+      <span class="modal-config-marker ${markerClass}" aria-hidden="true"></span>
+      <div class="modal-config-layer-row">
+        ${modalLayerTitleMarkup(label)}
+        ${modalDirBadgeMarkup('順', true)}
+      </div>
+      <div class="modal-config-fields modal-config-fields-empty">
+        <div class="modal-config-field modal-config-field-empty">
+          <div class="modal-config-main modal-config-muted">無此層配置</div>
+        </div>
+      </div>
+    </div>`;
+  }
+  const markerClass = label === '上層' ? 'is-upper' : 'is-lower';
+  return `<div class="modal-config-section">
+    <span class="modal-config-marker ${markerClass}" aria-hidden="true"></span>
+    <div class="modal-config-layer-row">
+      ${modalLayerTitleMarkup(label)}
+      ${modalDirBadgeMarkup(dir)}
+    </div>
+    <div class="modal-config-fields">
+      <div class="modal-config-field">
+        <div class="modal-config-label">日卡及階數</div>
+        <div class="modal-config-main card-value"><span class="card-rank-text">${escapeHtml(card)}</span>${rankIconMarkup(card)}</div>
+      </div>
+      <div class="modal-config-field partner-field">
+        <div class="modal-config-label">搭檔</div>
+        <div class="modal-config-main partner-value">${companionInlineMarkup(partner)}</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function modalConfigTable(d) {
+  return `<div class="modal-config-detail">
+    ${modalConfigRow('上層', d.upperCard, d.upperPartner, d.upperDir)}
+    ${modalConfigRow('下層', d.lowerCard, d.lowerPartner, d.lowerDir)}
+  </div>`;
 }
 
 function openPanelDetail(d, recordHistory = true) {
@@ -3165,28 +4451,47 @@ function openPanelDetail(d, recordHistory = true) {
   const wasViewedBeforeOpen = isViewed(folderItem);
   if (recordHistory) addHistoryItem(folderItem);
   setModalViewed(wasViewedBeforeOpen);
-  // restore block titles for panel cards
-  document.getElementById('mUpperBlock').querySelector('.modal-block-title') && document.getElementById('mUpperBlock').querySelector('.modal-block-title').remove();
-  document.getElementById('mLowerBlock').querySelector('.modal-block-title') && document.getElementById('mLowerBlock').querySelector('.modal-block-title').remove();
-  document.getElementById('mUpperBlock').insertAdjacentHTML('afterbegin', '<div class="modal-block-title">▲ 上層</div>');
-  document.getElementById('mLowerBlock').insertAdjacentHTML('afterbegin', '<div class="modal-block-title">▼ 下層</div>');
+  const modalEl = document.getElementById('modal');
+  const upperBlock = document.getElementById('mUpperBlock');
+  const lowerBlock = document.getElementById('mLowerBlock');
+  modalEl.classList.add('panel-detail');
+  modalEl.classList.remove('endless-detail');
+  modalEl.dataset.orbit = d.orbit;
 
   document.getElementById('mOrbit').innerHTML = `<span class="orbit-badge" data-orbit="${escapeHtml(d.orbit)}">${escapeHtml(ORBIT_LABEL[d.orbit] || d.orbit)}軌道</span>`;
-  document.getElementById('mLayer').textContent = d.layer;
-const orbitColors = {
-  開放: 'var(--col-open)', 光: 'var(--col-light)', 冰: 'var(--col-ice)',
-  火: 'var(--col-fire)', 能量: 'var(--col-energy)', 引力: 'var(--col-gravity)',
-  波動: 'var(--col-wave)', 金屬: 'var(--col-metal)'
-};
-document.getElementById('mLayer').style.color = orbitColors[d.orbit] || 'var(--text)';
-  document.getElementById('mUpperContent').innerHTML = modalBlock(d.upperCard, d.upperPartner, d.upperDir);
-  document.getElementById('mLowerContent').innerHTML = modalBlock(d.lowerCard, d.lowerPartner, d.lowerDir);
+  document.getElementById('mLayer').innerHTML = `<span class="modal-layer-num">${escapeHtml(String(d.layer))}</span><span class="modal-layer-unit">層</span>`;
+  const orbitColors = {
+    開放: 'var(--col-open)', 光: 'var(--col-light)', 冰: 'var(--col-ice)',
+    火: 'var(--col-fire)', 能量: 'var(--col-energy)', 引力: 'var(--col-gravity)',
+    波動: 'var(--col-wave)', 金屬: 'var(--col-metal)'
+  };
+  const orbitButtonColors = {
+    開放: ['var(--col-open-bg)', 'var(--col-open-border)'],
+    光: ['var(--col-light-bg)', 'var(--col-light-border)'],
+    冰: ['var(--col-ice-bg)', 'var(--col-ice-border)'],
+    火: ['var(--col-fire-bg)', 'var(--col-fire-border)'],
+    能量: ['var(--col-energy-bg)', 'var(--col-energy-border)'],
+    引力: ['var(--col-gravity-bg)', 'var(--col-gravity-border)'],
+    波動: ['var(--col-wave-bg)', 'var(--col-wave-border)'],
+    金屬: ['var(--col-metal-bg)', 'var(--col-metal-border)']
+  };
+  modalEl.style.setProperty('--modal-orbit-color', orbitColors[d.orbit] || 'var(--text)');
+  const [orbitBg, orbitBorder] = orbitButtonColors[d.orbit] || ['rgba(89,132,164,0.68)', 'rgba(147,199,231,0.68)'];
+  modalEl.style.setProperty('--modal-orbit-bg', orbitBg);
+  modalEl.style.setProperty('--modal-orbit-bg-strong', orbitBg);
+  modalEl.style.setProperty('--modal-orbit-border', orbitBorder);
+  document.getElementById('mLayer').style.color = '';
+  upperBlock.classList.add('modal-config-table-wrap');
+  upperBlock.querySelector('.modal-block-title')?.remove();
+  lowerBlock.querySelector('.modal-block-title')?.remove();
+  lowerBlock.style.display = 'none';
+  document.getElementById('mUpperContent').innerHTML = modalConfigTable(d);
+  document.getElementById('mLowerContent').innerHTML = '';
 
   const orbitLabel = ORBIT_LABEL[d.orbit] || d.orbit;
   const reportUrl = `https://docs.google.com/forms/d/e/1FAIpQLSdu-eI87wlkR2LnTlwc3kzHD4pz_PL1-gydhwCr7W-7HKOxyg/viewform?usp=pp_url&entry.1527588954=${encodeURIComponent(orbitLabel)}&entry.1863774587=${encodeURIComponent(d.layer)}&entry.1242930374=${encodeURIComponent(d.link)}`;
 
-  document.getElementById('mActions').innerHTML = '';
-  document.getElementById('mFooter').innerHTML = modalFooterActions(d.link, folderItem, reportUrl);
+  document.getElementById('mFooter').innerHTML = modalFooterActions(d.link, folderItem, reportUrl, d.hasVideo);
 
   document.getElementById('modalOverlay').classList.add('show');
 }
@@ -3205,7 +4510,22 @@ function restartActivePreview(tab) {
   }
 }
 
+function updatePrimaryTabSlider() {
+  const nav = document.querySelector('.tab-nav');
+  const activeBtn = nav?.querySelector('.tab-btn.active');
+  if (!nav || !activeBtn) return;
+
+  const navRect = nav.getBoundingClientRect();
+  const btnRect = activeBtn.getBoundingClientRect();
+  const left = btnRect.left - navRect.left;
+  const width = btnRect.width;
+
+  nav.style.setProperty('--tab-slider-x', `${left}px`);
+  nav.style.setProperty('--tab-slider-w', `${width}px`);
+}
+
 function switchTab(tab, btn) {
+  if (appLoading) return;
   const nextSection = document.getElementById('section-' + tab);
   const currentSection = document.querySelector('.section.active');
   if (!nextSection || currentSection === nextSection) return;
@@ -3213,6 +4533,8 @@ function switchTab(tab, btn) {
 
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
+  document.querySelector('.tab-nav')?.setAttribute('data-active', tab);
+  updatePrimaryTabSlider();
 
   if (currentSection) {
     currentSection.classList.add('content-transition', 'is-fading');
@@ -3232,6 +4554,7 @@ function switchTab(tab, btn) {
 }
 
 function selectPartnerDropdown(value) {
+  if (appLoading) return;
   activePartner = value || null;
   activeEndlessCard = null;
   applyEndlessFilters();
@@ -3271,16 +4594,19 @@ function renderEndlessDynamicFilters(baseData) {
 }
 
 function toggleEndlessCardFilter(value) {
+  if (appLoading) return;
   activeEndlessCard = activeEndlessCard === value ? null : value;
   applyEndlessFilters();
 }
 
 function clearEndlessDynamicFilters() {
+  if (appLoading) return;
   activeEndlessCard = null;
   applyEndlessFilters();
 }
 
 function applyEndlessFilters() {
+  if (appLoading) return;
   const videoOnly = document.getElementById('endlessVideoOnly').checked;
   const baseData = ENDLESS_ALL.filter(d => {
     if (activePartner && d.partner !== activePartner) return false;
@@ -3295,6 +4621,7 @@ function applyEndlessFilters() {
 }
 
 function resetEndlessFilters() {
+  if (appLoading) return;
   activePartner = null;
   activeEndlessCard = null;
   document.getElementById('partnerSelect').value = '';
@@ -3313,7 +4640,7 @@ function fmtScore(s) {
 function endlessCardMarkup(d, action, previewType = '', previewIndex = null) {
   const folderItem = endlessFolderItem(d);
   const partner = escapeHtml(d.partner);
-  const card = escapeHtml(d.card);
+  const card = `${escapeHtml(d.card)}${rankIconMarkup(d.card)}`;
   const combo = escapeHtml(d.combo);
   const actionAttr = action ? ` onclick="${action}"` : '';
   const previewAttrs = previewType ? ` data-preview-type="${previewType}" data-preview-index="${previewIndex}"` : '';
@@ -3323,7 +4650,6 @@ function endlessCardMarkup(d, action, previewType = '', previewIndex = null) {
       <div class="endless-card-header">
         <div class="card-labels">
           <span class="partner-badge" data-partner="${partner}">${partner}</span>
-          ${d.hasVideo ? '<span class="video-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg> 附影片</span>' : ''}
         </div>
         <div class="card-meta-right">
           <span class="endless-score">${escapeHtml(fmtScore(d.score))} 分</span>
@@ -3338,8 +4664,8 @@ function endlessCardMarkup(d, action, previewType = '', previewIndex = null) {
         <span class="combo-tag">${combo} 譜</span>
       </div>
       <div class="endless-footer">
-        <span></span>
-        <span class="link-hint">點擊查看詳情 →</span>
+        ${d.hasVideo ? videoBadgeMarkup() : '<span></span>'}
+        <span class="link-hint">點擊查看紀錄 →</span>
       </div>
     </div>`;
 }
@@ -3393,22 +4719,31 @@ function openEndlessDetail(d, recordHistory = true) {
   const wasViewedBeforeOpen = isViewed(folderItem);
   if (recordHistory) addHistoryItem(folderItem);
   setModalViewed(wasViewedBeforeOpen);
+  const modalEl = document.getElementById('modal');
+  modalEl.classList.remove('panel-detail');
+  modalEl.classList.add('endless-detail');
+  modalEl.removeAttribute('data-orbit');
+  modalEl.style.removeProperty('--modal-orbit-color');
+  modalEl.style.removeProperty('--modal-orbit-bg');
+  modalEl.style.removeProperty('--modal-orbit-bg-strong');
+  modalEl.style.removeProperty('--modal-orbit-border');
+  modalEl.style.removeProperty('--modal-orbit-button-text');
+  document.getElementById('mUpperBlock').classList.remove('modal-config-table-wrap');
   // remove block titles for endless (no upper/lower layers)
   document.getElementById('mUpperBlock').querySelector('.modal-block-title') && document.getElementById('mUpperBlock').querySelector('.modal-block-title').remove();
   document.getElementById('mLowerBlock').querySelector('.modal-block-title') && document.getElementById('mLowerBlock').querySelector('.modal-block-title').remove();
 
-  document.getElementById('mOrbit').innerHTML = `<span class="partner-badge" data-partner="${escapeHtml(d.partner)}">${escapeHtml(d.partner)}</span>`;
+  document.getElementById('mOrbit').innerHTML = `<span class="partner-badge" data-partner="${escapeHtml(d.partner)}">${companionInlineMarkup(d.partner)}</span>`;
   document.getElementById('mLayer').textContent = fmtScore(d.score) + ' 分';
   document.getElementById('mLayer').style.color = 'var(--text)';
   document.getElementById('mUpperContent').innerHTML = `
-    <div class="modal-row"><span class="modal-label">日卡</span><span class="modal-val">${escapeHtml(d.card)}</span></div>
+    <div class="modal-row"><span class="modal-label">日卡</span><span class="modal-val">${escapeHtml(d.card)}${rankIconMarkup(d.card)}</span></div>
     <div class="modal-row"><span class="modal-label">對譜數</span><span class="modal-val">${escapeHtml(d.combo)} 譜</span></div>`;
   document.getElementById('mLowerBlock').style.display = 'none';
 
   const reportUrl = `https://docs.google.com/forms/d/e/1FAIpQLSdP6bWGJ6GFkyOZ7dWsqDbiup7KzTyJGxw9Feta-EqCS3pG6w/viewform?usp=pp_url&entry.1527588954=${encodeURIComponent(d.partner)}&entry.1242930374=${encodeURIComponent(d.link)}`;
 
-  document.getElementById('mActions').innerHTML = '';
-  document.getElementById('mFooter').innerHTML = modalFooterActions(d.link, folderItem, reportUrl);
+  document.getElementById('mFooter').innerHTML = modalFooterActions(d.link, folderItem, reportUrl, d.hasVideo);
   document.getElementById('modalOverlay').classList.add('show');
 }
 
@@ -3419,9 +4754,18 @@ function openEndlessModal(idx) {
 function closeModal(e) { if (e.target === document.getElementById('modalOverlay')) closeModalDirect(); }
 function closeModalDirect() {
   document.getElementById('modalOverlay').classList.remove('show');
+  const modalEl = document.getElementById('modal');
+  modalEl.classList.remove('panel-detail', 'endless-detail');
+  modalEl.removeAttribute('data-orbit');
+  modalEl.style.removeProperty('--modal-orbit-color');
+  modalEl.style.removeProperty('--modal-orbit-bg');
+  modalEl.style.removeProperty('--modal-orbit-bg-strong');
+  modalEl.style.removeProperty('--modal-orbit-border');
+  modalEl.style.removeProperty('--modal-orbit-button-text');
   previewModalPaused = false;
   previewLastTime = performance.now();
   setModalViewed(false);
+  document.getElementById('mUpperBlock').classList.remove('modal-config-table-wrap');
   document.getElementById('mLowerBlock').style.display = '';
 }
 document.addEventListener('keydown', e => {
@@ -3460,7 +4804,13 @@ function updateScrollButtons() {
 }
 
 window.addEventListener('scroll', updateScrollButtons);
-window.addEventListener('resize', updateScrollButtons);
+window.addEventListener('resize', () => {
+  updateScrollButtons();
+  updatePrimaryTabSlider();
+});
+if (document.fonts?.ready) {
+  document.fonts.ready.then(updatePrimaryTabSlider).catch(() => {});
+}
 
 init();
 updateScrollButtons();
@@ -3481,12 +4831,12 @@ updateScrollButtons();
 <div class="local-folder-panel" id="localFolderPanel">
   <div class="folder-header">
     <div>
-      <div class="folder-title">個人資料夾</div>
-      <div class="folder-note">以下資料僅會儲存於本機瀏覽器</div>
+      <div class="folder-title">✦ 個人資料夾</div>
+      <div class="folder-note">以下資料僅會儲存於當前瀏覽器中</div>
     </div>
     <button class="folder-close" onclick="closeFolderPanel()" aria-label="關閉資料夾">✕</button>
   </div>
-  <div class="folder-tabs">
+  <div class="folder-tabs" data-active="favorites">
     <button class="folder-tab active" data-tab="favorites" onclick="switchFolderTab('favorites')">收藏</button>
     <button class="folder-tab" data-tab="history" onclick="switchFolderTab('history')">瀏覽記錄</button>
   </div>
