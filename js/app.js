@@ -1,0 +1,2088 @@
+
+// Parse data
+const LIMITS = { 光:210, 冰:210, 火:240, 能量:180, 引力:180, 金屬:180, 開放:300, 波動:60 };
+const ORBIT_LABEL = { 開放:'開放穩定', 波動:'開放波動', 光:'光', 冰:'冰', 火:'火', 能量:'能量', 引力:'引力', 金屬:'金屬' };
+
+let DATA = [];
+let ENDLESS_DATA = [];
+let ENDLESS_ALL = [];
+const DYNAMIC_FILTER_CATEGORIES = ['dir', 'card', 'partner'];
+const state = {
+  panel: {
+    orbit: null,
+    results: [],
+    layerFilters: { upper: [], lower: [] },
+    dynamicBaseData: [],
+    dynamicFilterOrder: 0,
+    rangeKey: null,
+    manualEntryOpen: false,
+    manualLayerValue: '',
+    advancedFilterOpen: false,
+    committedOrbit: null,
+    committedLayer: null
+  },
+  endless: {
+    partner: null,
+    card: null
+  },
+  preview: {
+    items: { panel: [], endless: [] },
+    autoFrame: null,
+    lastTime: 0,
+    modalPaused: false
+  }
+};
+const PANEL_PREVIEW_SPEED = 0.075;
+const CONTENT_FADE_MS = 150;
+const fadeTimers = {};
+const fadeVersions = {};
+let tabFadeTimer = null;
+let activeFolderTab = 'favorites';
+let localFolder = { favorites: [], history: [] };
+let CHANGELOG_DATA = [];
+let changelogLoaded = false;
+let changelogLoadError = false;
+let appLoading = true;
+let bootLoadFailed = false;
+const BOOT_CSV_TOTAL = 3;
+const bootProgress = {
+  csvDone: 0,
+  csvTotal: BOOT_CSV_TOTAL,
+  imageDone: 0,
+  imageTotal: null,
+  stage: '資料載入中'
+};
+const LOCAL_FOLDER_KEY = 'ladsbattle_local_folder_v1';
+
+function loadingMarkup(message = '資料載入中…') {
+  return `<span class="loading-inline"><span class="loading-spinner"></span><span class="loading-text">${escapeHtml(message)}</span></span>`;
+}
+
+function getBootProgressPercent() {
+  const csvTotal = Math.max(bootProgress.csvTotal, 1);
+  const csvRatio = Math.min(bootProgress.csvDone / csvTotal, 1);
+  const csvWeight = 45;
+  const imageWeight = 55;
+
+  if (bootProgress.imageTotal === null) {
+    return Math.round(csvRatio * csvWeight);
+  }
+
+  const imageRatio = bootProgress.imageTotal === 0
+    ? 1
+    : Math.min(bootProgress.imageDone / bootProgress.imageTotal, 1);
+  return Math.min(100, Math.round((csvRatio * csvWeight) + (imageRatio * imageWeight)));
+}
+
+function loadProgressMarkup() {
+  const percent = getBootProgressPercent();
+  return `
+    <span class="loading-inline boot-progress-inline">
+      <span class="loading-spinner"></span>
+      <span class="loading-text">資料載入中…</span>
+      <span class="load-progress" role="status" aria-label="資料載入進度"><strong>${percent}%</strong></span>
+    </span>`;
+}
+
+function updateBootProgressElement(element) {
+  if (!element) return;
+  const percentText = `${getBootProgressPercent()}%`;
+  const progressText = element.querySelector('.load-progress strong');
+  if (progressText) {
+    progressText.textContent = percentText;
+    return;
+  }
+  element.innerHTML = loadProgressMarkup();
+}
+
+function renderBootProgress() {
+  if (!appLoading || bootLoadFailed) return;
+  updateBootProgressElement(document.getElementById('resultsInfo'));
+  updateBootProgressElement(document.getElementById('endlessInfo'));
+}
+
+function setSearchControlsDisabled(disabled) {
+  document.body.classList.toggle('is-app-loading', disabled);
+  document.querySelectorAll(`
+    .tab-nav .tab-btn,
+    .filter-panel button,
+    .filter-panel input,
+    .endless-filter-panel button,
+    .endless-filter-panel input,
+    .endless-filter-panel select
+  `).forEach(el => { el.disabled = disabled; });
+  const advancedToggle = document.getElementById('advancedFilterToggle');
+  if (advancedToggle) advancedToggle.disabled = disabled;
+  if (!disabled) updatePanelFilterUI();
+}
+
+function markCsvLoaded() {
+  bootProgress.csvDone += 1;
+  bootProgress.stage = '資料載入中';
+  renderBootProgress();
+}
+
+async function fetchCsvResource(url, parser, onSuccess) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`CSV request failed: ${res.status}`);
+  const text = await res.text();
+  onSuccess(parser(text));
+  markCsvLoaded();
+}
+
+function rankImageSrcFromCard(card) {
+  const text = String(card || '').trim();
+  if (text === '無套裝') return '';
+  const match = text.match(/^([0-3])階/);
+  return match ? `assets/ranks/R${match[1]}.png` : '';
+}
+
+function addCompanionImage(urls, partner) {
+  const text = String(partner || '').trim();
+  if (!text || text === 'N/A') return;
+  urls.add(`assets/companions/${encodeURIComponent(text)}.png`);
+}
+
+function addRankImage(urls, card) {
+  const src = rankImageSrcFromCard(card);
+  if (src) urls.add(src);
+}
+
+function collectInitialImageUrls() {
+  const urls = new Set();
+  DATA.forEach(row => {
+    addRankImage(urls, row.upperCard);
+    addRankImage(urls, row.lowerCard);
+    addCompanionImage(urls, row.upperPartner);
+    addCompanionImage(urls, row.lowerPartner);
+  });
+  ENDLESS_ALL.forEach(row => {
+    addRankImage(urls, row.card);
+    addCompanionImage(urls, row.partner);
+  });
+  return [...urls];
+}
+
+function preloadImage(url) {
+  return new Promise(resolve => {
+    const image = new Image();
+    image.onload = () => resolve({ url, ok: true });
+    image.onerror = () => resolve({ url, ok: false });
+    image.src = url;
+  });
+}
+
+async function preloadInitialImages() {
+  const urls = collectInitialImageUrls();
+  bootProgress.stage = '資料載入中';
+  bootProgress.imageTotal = urls.length;
+  bootProgress.imageDone = 0;
+  renderBootProgress();
+  const results = await Promise.all(urls.map(async url => {
+    const result = await preloadImage(url);
+    bootProgress.imageDone += 1;
+    renderBootProgress();
+    return result;
+  }));
+  const failed = results.filter(result => !result.ok);
+  if (failed.length > 0) {
+    console.warn('Some preload images failed:', failed.map(result => result.url));
+  }
+}
+
+function showBootLoadError() {
+  bootLoadFailed = true;
+  appLoading = true;
+  setSearchControlsDisabled(true);
+  stopPreviewAutoScroll();
+  const message = '⚠ 資料載入失敗，請重新整理頁面';
+  document.getElementById('resultsInfo').innerHTML = message;
+  document.getElementById('endlessInfo').innerHTML = message;
+  document.getElementById('cardsGrid').replaceChildren();
+  document.getElementById('endlessGrid').replaceChildren();
+}
+
+function formatTaipeiDateTime(value) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Taipei',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  }).formatToParts(new Date(value)).reduce((acc, part) => {
+    acc[part.type] = part.value;
+    return acc;
+  }, {});
+  return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}`;
+}
+
+function parseCSV(text) {
+  const lines = text.trim().split(/\r?\n/);
+  return lines.slice(1).map(line => {
+    const cols = parseCsvLine(line);
+    return {
+      orbit: cols[0]?.trim(), layer: parseInt(cols[1]),
+      upperCard: cols[2]?.trim(), upperPartner: cols[3]?.trim(), upperDir: cols[4]?.trim(),
+      lowerCard: cols[5]?.trim(), lowerPartner: cols[6]?.trim(), lowerDir: cols[7]?.trim(),
+      hasVideo: cols[8]?.trim() === 'TRUE', link: cols[9]?.trim()
+    };
+  }).filter(d => !isNaN(d.layer));
+}
+
+function parseEndlessCSV(text) {
+  const lines = text.trim().split(/\r?\n/);
+  return lines.slice(1).map(line => {
+    const cols = parseCsvLine(line);
+    return {
+      partner: cols[0]?.trim(),
+      card:    cols[1]?.trim(),
+      combo:   cols[2]?.trim(),
+      score:   cols[3]?.trim(),
+      hasVideo: cols[4]?.trim() === 'TRUE',
+      link:    cols[5]?.trim()
+    };
+  }).filter(d => d.partner);
+}
+
+function parseCsvLine(line) {
+  const cells = [];
+  let cell = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    const next = line[i + 1];
+    if (char === '"' && inQuotes && next === '"') {
+      cell += '"';
+      i++;
+    } else if (char === '"') {
+      inQuotes = !inQuotes;
+    } else if (char === ',' && !inQuotes) {
+      cells.push(cell);
+      cell = '';
+    } else {
+      cell += char;
+    }
+  }
+  cells.push(cell);
+  return cells.map(value => value.trim());
+}
+
+function parseChangelogCSV(text) {
+  const lines = text.trim().split(/\r?\n/).filter(Boolean);
+  if (lines.length <= 1) return [];
+  const headers = parseCsvLine(lines[0]).map(header => header.toLowerCase());
+  const dateIndex = headers.indexOf('date');
+  const noteIndex = headers.indexOf('note');
+  return lines.slice(1).map(line => {
+    const cols = parseCsvLine(line);
+    return {
+      date: cols[dateIndex]?.trim(),
+      note: cols[noteIndex]?.trim()
+    };
+  }).filter(item => item.date && item.note);
+}
+
+async function init() {
+  loadLocalFolder();
+  renderFolderPanel();
+  updatePrimaryTabSlider();
+  const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTfNvGSQbmwwXodVzmhuZfOAGIIE634hWTA6V1CTaQlF272v3VRJ5t_F7OfSKPH0qbBQbUSvLlQnw3x/pub?output=csv';
+  const ENDLESS_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTfNvGSQbmwwXodVzmhuZfOAGIIE634hWTA6V1CTaQlF272v3VRJ5t_F7OfSKPH0qbBQbUSvLlQnw3x/pub?gid=1577067344&single=true&output=csv';
+  const CHANGELOG_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTfNvGSQbmwwXodVzmhuZfOAGIIE634hWTA6V1CTaQlF272v3VRJ5t_F7OfSKPH0qbBQbUSvLlQnw3x/pub?gid=1820828638&single=true&output=csv';
+  const SHEET_FILE_ID = '19RqMAlpyi1g9pXyJ1azm45pxfjvxRqxJOUCdsQpHKDo';
+  const DRIVE_API_KEY = 'AIzaSyAzbzHaKnhio4gomMkPm-lppgkDpBj6TIw';
+
+  appLoading = true;
+  bootLoadFailed = false;
+  setSearchControlsDisabled(true);
+  renderBootProgress();
+
+  const updateLastUpdated = async () => {
+    const metaUrl = `https://www.googleapis.com/drive/v3/files/${SHEET_FILE_ID}?fields=modifiedTime&key=${DRIVE_API_KEY}`;
+    const metaRes = await fetch(metaUrl);
+    const meta = await metaRes.json();
+    const lastUpdatedEl = document.getElementById('lastUpdated');
+    if (meta.modifiedTime && lastUpdatedEl) {
+      const formatted = formatTaipeiDateTime(meta.modifiedTime);
+      lastUpdatedEl.textContent = `Last Updated: ${formatted} (UTC+8)`;
+    }
+  };
+  updateLastUpdated().catch(err => console.error('Last Updated fetch failed:', err));
+
+  try {
+    const csvTasks = [
+      fetchCsvResource(CSV_URL, parseCSV, rows => { DATA = rows; }),
+      fetchCsvResource(ENDLESS_CSV_URL, parseEndlessCSV, rows => {
+        ENDLESS_ALL = rows;
+        ENDLESS_DATA = [...ENDLESS_ALL];
+      }),
+      fetchCsvResource(CHANGELOG_CSV_URL, parseChangelogCSV, rows => {
+        CHANGELOG_DATA = rows;
+        changelogLoaded = true;
+        renderVersionHistory();
+      }).catch(err => {
+        changelogLoadError = true;
+        markCsvLoaded();
+        renderVersionHistory();
+        console.error('Maintenance history fetch failed:', err);
+      })
+    ];
+
+    await Promise.all(csvTasks);
+    previewModule.prime('panel');
+    previewModule.prime('endless');
+    await preloadInitialImages();
+
+    appLoading = false;
+    setSearchControlsDisabled(false);
+    state.endless.partner = null;
+    renderLayerSuggestions();
+    applyFilters();
+    applyEndlessFilters();
+  } catch (err) {
+    showBootLoadError();
+    console.error(err);
+  }
+}
+
+function getExactLayerValue() {
+  const value = state.panel.committedOrbit === state.panel.orbit
+    ? state.panel.committedLayer
+    : null;
+  const limit = state.panel.orbit ? (LIMITS[state.panel.orbit] || Number.POSITIVE_INFINITY) : Number.POSITIVE_INFINITY;
+  return Number.isInteger(value) && value >= 1 && value <= limit ? value : null;
+}
+
+function commitExactQuery(layer) {
+  if (state.panel.committedOrbit !== state.panel.orbit || state.panel.committedLayer !== layer) {
+    state.panel.layerFilters = { upper: [], lower: [] };
+  }
+  state.panel.committedOrbit = state.panel.orbit;
+  state.panel.committedLayer = layer;
+}
+
+function selectOrbit(btn) {
+  if (appLoading) return;
+  state.panel.committedOrbit = null;
+  state.panel.committedLayer = null;
+  state.panel.manualEntryOpen = false;
+  state.panel.manualLayerValue = '';
+  const orbit = btn.dataset.orbit;
+  clearAdvancedFilterState();
+  state.panel.rangeKey = null;
+  if (state.panel.orbit === orbit) {
+    state.panel.orbit = null;
+    state.panel.advancedFilterOpen = false;
+    btn.classList.remove('active');
+    btn.setAttribute('aria-pressed', 'false');
+  } else {
+    document.querySelectorAll('#orbitChips .chip').forEach(c => {
+      c.classList.remove('active');
+      c.setAttribute('aria-pressed', 'false');
+    });
+    state.panel.orbit = orbit;
+    btn.classList.add('active');
+    btn.setAttribute('aria-pressed', 'true');
+  }
+  updatePanelFilterUI();
+  applyFilters();
+}
+
+function updatePanelFilterUI() {
+  const panelSection = document.getElementById('section-panel');
+
+  if (panelSection) {
+    if (state.panel.orbit) panelSection.dataset.orbitTheme = state.panel.orbit;
+    else delete panelSection.dataset.orbitTheme;
+  }
+  renderLayerSuggestions();
+}
+
+function getLayerRanges() {
+  if (!state.panel.orbit || !Array.isArray(DATA) || DATA.length === 0) return [];
+  const orbitLimit = Number.isFinite(LIMITS[state.panel.orbit]) ? LIMITS[state.panel.orbit] : Infinity;
+  const layers = [...new Set(DATA
+    .filter(row => row.orbit === state.panel.orbit && Number.isFinite(row.layer) && row.layer >= 1 && row.layer <= orbitLimit)
+    .map(row => row.layer))]
+    .sort((a, b) => a - b);
+  const ranges = new Map();
+
+  layers.forEach(layer => {
+    const start = layer <= 60 ? 1 : 61 + Math.floor((layer - 61) / 60) * 60;
+    const end = Math.min(start === 1 ? 60 : start + 59, orbitLimit);
+    const key = `${start}-${end}`;
+    if (!ranges.has(key)) ranges.set(key, { key, start, end, layers: [] });
+    ranges.get(key).layers.push(layer);
+  });
+
+  return [...ranges.values()].sort((a, b) => a.start - b.start);
+}
+
+function renderLayerSuggestions() {
+  const panel = document.getElementById('layerSuggestionPanel');
+  if (!panel) return;
+  if (appLoading) {
+    panel.classList.remove('show');
+    panel.replaceChildren();
+    return;
+  }
+  const ranges = getLayerRanges();
+  const activeRange = ranges.find(range => range.key === state.panel.rangeKey) || null;
+  const selectedLayer = getExactLayerValue();
+  if (state.panel.rangeKey && !activeRange) state.panel.rangeKey = null;
+  const visibleItems = activeRange ? activeRange.layers : ranges;
+  const suggestionItems = !activeRange && state.panel.manualEntryOpen ? [] : visibleItems;
+
+  if (!state.panel.orbit || visibleItems.length === 0) {
+    panel.innerHTML = `
+      <div class="layer-suggestion-toolbar">
+        <span class="orbit-label">快速選層</span>
+        <span class="layer-suggestion-back is-placeholder" aria-hidden="true">返回區間</span>
+      </div>
+      <div class="layer-suggestion-placeholder${state.panel.orbit ? '' : ' is-empty'}">
+        <span class="layer-suggestion-placeholder-text">${state.panel.orbit ? '此軌道暫無可選層數' : '請先選擇軌道類型'}</span>
+      </div>
+    `;
+    panel.classList.add('show');
+    return;
+  }
+  const manualControl = activeRange ? '' : (state.panel.manualEntryOpen ? `
+    <div class="layer-manual-controls">
+      <div class="layer-manual-entry">
+        <input class="layer-manual-input" type="text" inputmode="numeric" pattern="[0-9]*" value="${escapeHtml(state.panel.manualLayerValue)}" placeholder="輸入層數" aria-label="手動輸入層數">
+        <button class="layer-manual-submit" type="button" data-layer-action="manual-submit">查看</button>
+      </div>
+      <button class="layer-manual-return" type="button" data-layer-action="manual-close">返回快速選層</button>
+    </div>
+  ` : `
+    <button class="layer-suggestion-chip layer-manual-trigger" type="button" data-layer-action="manual-open">
+      <span>＋ 手動輸入</span>
+    </button>
+  `);
+  panel.innerHTML = `
+    <div class="layer-suggestion-toolbar">
+      <span class="orbit-label">快速選層</span>
+      ${activeRange ? `
+        <button class="layer-suggestion-back" type="button" data-layer-action="back" aria-label="返回層數區間">
+          返回區間
+        </button>
+      ` : '<span class="layer-suggestion-back is-placeholder" aria-hidden="true">返回區間</span>'}
+    </div>
+    <div class="layer-suggestion-track" aria-label="${activeRange ? '選擇層數' : '選擇層數區間'}">
+      ${suggestionItems.map(item => activeRange ? `
+        <button class="layer-suggestion-chip${selectedLayer === item ? ' active' : ''}" type="button" data-layer="${item}" aria-pressed="${selectedLayer === item}">
+          <span>${item}</span>
+        </button>
+      ` : `
+        <button class="layer-suggestion-chip" type="button" data-layer-range="${item.key}">
+          <span>${item.start}–${item.end}</span>
+        </button>
+      `).join('')}
+      ${manualControl}
+    </div>
+  `;
+  panel.classList.add('show');
+}
+
+function blurLayerSuggestionFocus() {
+  const panel = document.getElementById('layerSuggestionPanel');
+  panel?.classList.add('suppress-hover');
+  const focused = document.activeElement;
+  if (focused instanceof HTMLElement && panel?.contains(focused)) {
+    focused.blur();
+  }
+}
+
+function selectLayerRange(rangeKey) {
+  if (appLoading || !state.panel.orbit) return;
+  const range = getLayerRanges().find(item => item.key === rangeKey);
+  if (!range) return;
+  blurLayerSuggestionFocus();
+  state.panel.committedOrbit = null;
+  state.panel.committedLayer = null;
+  state.panel.manualEntryOpen = false;
+  state.panel.manualLayerValue = '';
+  state.panel.rangeKey = range.key;
+  clearAdvancedFilterState();
+  renderLayerSuggestions();
+  applyFilters();
+}
+
+function backToLayerRanges() {
+  blurLayerSuggestionFocus();
+  state.panel.committedOrbit = null;
+  state.panel.committedLayer = null;
+  state.panel.manualEntryOpen = false;
+  state.panel.manualLayerValue = '';
+  state.panel.rangeKey = null;
+  clearAdvancedFilterState();
+  renderLayerSuggestions();
+  applyFilters();
+}
+
+function selectSuggestedLayer(layer) {
+  if (appLoading || !state.panel.orbit) return;
+  blurLayerSuggestionFocus();
+  state.panel.manualEntryOpen = false;
+  state.panel.manualLayerValue = '';
+  clearAdvancedFilterState();
+  commitExactQuery(layer);
+  applyFilters();
+  renderLayerSuggestions();
+}
+
+function openManualLayerEntry() {
+  if (appLoading || !state.panel.orbit) return;
+  state.panel.manualEntryOpen = true;
+  renderLayerSuggestions();
+  window.requestAnimationFrame(() => {
+    document.querySelector('#layerSuggestionPanel .layer-manual-input')?.focus();
+  });
+}
+
+function closeManualLayerEntry() {
+  backToLayerRanges();
+  window.requestAnimationFrame(() => {
+    document.querySelector('#layerSuggestionPanel .layer-manual-trigger')?.focus();
+  });
+}
+
+function clearManualLayerError(input) {
+  if (!input) return;
+  input.removeAttribute('aria-invalid');
+  input.placeholder = '輸入層數';
+  input.closest('.layer-manual-entry')?.classList.remove('has-error');
+}
+
+function showManualLayerError(input) {
+  const limit = LIMITS[state.panel.orbit] || 300;
+  input.value = '';
+  state.panel.manualLayerValue = '';
+  input.placeholder = `此軌道範圍為1–${limit}`;
+  input.setAttribute('aria-invalid', 'true');
+  input.closest('.layer-manual-entry')?.classList.add('has-error');
+  input.focus();
+}
+
+function submitManualLayerEntry() {
+  if (appLoading || !state.panel.orbit) return;
+  const input = document.querySelector('#layerSuggestionPanel .layer-manual-input');
+  if (!input) return;
+  const rawValue = input.value.trim();
+  const layer = Number(rawValue);
+  const limit = LIMITS[state.panel.orbit] || Number.POSITIVE_INFINITY;
+  if (!rawValue || !Number.isInteger(layer) || layer < 1 || layer > limit) {
+    showManualLayerError(input);
+    return;
+  }
+
+  blurLayerSuggestionFocus();
+  clearAdvancedFilterState();
+  state.panel.rangeKey = null;
+  state.panel.manualEntryOpen = true;
+  state.panel.manualLayerValue = String(layer);
+  commitExactQuery(layer);
+  applyFilters();
+  renderLayerSuggestions();
+  window.requestAnimationFrame(() => {
+    document.querySelector('#layerSuggestionPanel .layer-manual-input')?.focus();
+  });
+}
+
+function dirLabel(dir) {
+  if (dir === '順') return '順譜';
+  if (dir === '逆') return '逆譜';
+  return dir;
+}
+
+function getBasePanelData(layerNum, videoOnly, layerRange = null) {
+  return DATA.filter(d => {
+    if (state.panel.orbit && d.orbit !== state.panel.orbit) return false;
+    if (layerNum !== null && d.layer !== layerNum) return false;
+    if (layerNum === null && layerRange && (d.layer < layerRange.start || d.layer > layerRange.end)) return false;
+    if (videoOnly && !d.hasVideo) return false;
+    return true;
+  });
+}
+
+function addOption(map, type, value, label = value) {
+  if (!value || value === 'N/A') return;
+  const key = `${type}:${value}`;
+  if (!map.has(key)) map.set(key, { type, value, label });
+}
+
+function leadingRank(value) {
+  const match = String(value).match(/^(\d+)/);
+  return match ? parseInt(match[1], 10) : 999;
+}
+
+function cardSetName(value) {
+  const text = String(value || '').trim();
+  const match = text.match(/^\d+\s*階\s*(.+)$/);
+  return match ? match[1].trim() : text;
+}
+
+function sortCardsBySetAndRank(cards) {
+  const setMinRank = new Map();
+  cards.forEach(card => {
+    if (card.value === '無套裝') return;
+    const setName = cardSetName(card.value);
+    const rank = leadingRank(card.value);
+    const current = setMinRank.get(setName);
+    if (current === undefined || rank < current) setMinRank.set(setName, rank);
+  });
+
+  return cards.sort((a, b) => {
+    if (a.value === '無套裝' && b.value !== '無套裝') return -1;
+    if (b.value === '無套裝' && a.value !== '無套裝') return 1;
+    const aSet = cardSetName(a.value);
+    const bSet = cardSetName(b.value);
+    const setRankDiff = (setMinRank.get(aSet) ?? 999) - (setMinRank.get(bSet) ?? 999);
+    if (setRankDiff !== 0) return setRankDiff;
+    const setNameDiff = aSet.localeCompare(bSet, 'zh-Hant');
+    if (setNameDiff !== 0) return setNameDiff;
+    const rankDiff = leadingRank(a.value) - leadingRank(b.value);
+    if (rankDiff !== 0) return rankDiff;
+    return a.value.localeCompare(b.value, 'zh-Hant');
+  });
+}
+
+function collectLayerOptions(data, side) {
+  const dirMap = new Map();
+  const cardMap = new Map();
+  const partnerMap = new Map();
+  const prefix = side === 'upper' ? 'upper' : 'lower';
+  data.forEach(d => {
+    addOption(dirMap, 'dir', d[`${prefix}Dir`], dirLabel(d[`${prefix}Dir`]));
+    addOption(cardMap, 'card', d[`${prefix}Card`]);
+    addOption(partnerMap, 'partner', d[`${prefix}Partner`]);
+  });
+  const dirs = ['順', '逆']
+    .map(dir => dirMap.get(`dir:${dir}`))
+    .filter(Boolean);
+  const cards = sortCardsBySetAndRank([...cardMap.values()]);
+  const partners = [...partnerMap.values()];
+  return { card: cards, partner: partners, dir: dirs };
+}
+
+function isDynamicFilterActive(side, option) {
+  return state.panel.layerFilters[side].some(f => f.type === option.type && f.value === option.value);
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function safeExternalUrl(value) {
+  try {
+    const url = new URL(String(value || ''), location.href);
+    return url.protocol === 'http:' || url.protocol === 'https:' ? url.href : '#';
+  } catch (err) {
+    return '#';
+  }
+}
+
+function loadLocalFolder() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(LOCAL_FOLDER_KEY) || '{}');
+    localFolder = {
+      favorites: Array.isArray(saved.favorites) ? saved.favorites : [],
+      history: Array.isArray(saved.history) ? saved.history : []
+    };
+  } catch (err) {
+    localFolder = { favorites: [], history: [] };
+  }
+}
+
+function saveLocalFolder() {
+  localStorage.setItem(LOCAL_FOLDER_KEY, JSON.stringify(localFolder));
+}
+
+function itemKey(item) {
+  return `${item.type}:${item.link}`;
+}
+
+function panelFolderItem(d) {
+  return {
+    type: 'panel',
+    link: d.link,
+    title: `${ORBIT_LABEL[d.orbit] || d.orbit} ${d.layer} 層`,
+    meta: `上層 ${d.upperCard}｜下層 ${d.lowerCard}`,
+    badge: d.hasVideo ? '附影片' : '',
+    savedAt: Date.now()
+  };
+}
+
+function endlessFolderItem(d) {
+  return {
+    type: 'endless',
+    link: d.link,
+    partner: d.partner,
+    card: d.card,
+    score: fmtScore(d.score),
+    combo: d.combo,
+    title: `無盡挑戰｜${d.partner}`,
+    meta: `${d.card}｜${fmtScore(d.score)} 分｜${d.combo} 譜`,
+    badge: d.hasVideo ? '附影片' : '',
+    savedAt: Date.now()
+  };
+}
+
+function displayFolderItem(item) {
+  if (item.type !== 'endless') return item;
+  let partner = item.partner || '';
+  let card = item.card || '';
+  let score = item.score || '';
+  let combo = item.combo || '';
+
+  if ((!partner || !card) && item.title) {
+    const parts = item.title.split('｜');
+    if (parts[0] === '無盡挑戰') {
+      partner = partner || parts[1] || '';
+    } else {
+      partner = partner || parts[0] || '';
+      card = card || parts[1] || '';
+    }
+  }
+
+  if ((!score || !combo || !card) && item.meta) {
+    const parts = item.meta.split('｜');
+    if (parts[0]?.startsWith('無盡挑戰')) {
+      score = score || parts[0].replace('無盡挑戰', '').replace('分', '').trim();
+      combo = combo || parts[1]?.replace('譜', '').trim() || '';
+    } else {
+      card = card || parts[0] || '';
+      score = score || parts[1]?.replace('分', '').trim() || '';
+      combo = combo || parts[2]?.replace('譜', '').trim() || '';
+    }
+  }
+
+  return {
+    ...item,
+    title: `無盡挑戰｜${partner || '未指定搭檔'}`,
+    meta: `${card || '未指定日卡'}｜${score || '—'} 分｜${combo || '—'} 譜`
+  };
+}
+
+function isFavorite(item) {
+  const key = itemKey(item);
+  return localFolder.favorites.some(saved => itemKey(saved) === key);
+}
+
+function isViewed(item) {
+  const key = itemKey(item);
+  return localFolder.history.some(saved => itemKey(saved) === key);
+}
+
+function encodedItemKey(item) {
+  return encodeURIComponent(itemKey(item));
+}
+
+function viewedCornerMarkup() {
+  return '<div class="viewed-corner" aria-hidden="true"><span>已看過</span></div>';
+}
+
+function viewedCardMarkup(item) {
+  return isViewed(item) ? viewedCornerMarkup() : '';
+}
+
+function viewedCardClass(item) {
+  return isViewed(item) ? ' viewed-card' : '';
+}
+
+function markViewedCards(item) {
+  const key = encodedItemKey(item);
+  document.querySelectorAll(`[data-view-key="${key}"]`).forEach(card => {
+    card.classList.add('viewed-card');
+    if (!card.querySelector('.viewed-corner')) {
+      card.insertAdjacentHTML('afterbegin', viewedCornerMarkup());
+    }
+  });
+}
+
+function setModalViewed(isViewedNow = true) {
+  document.getElementById('modal')?.classList.toggle('viewed-detail', isViewedNow);
+}
+
+function toggleFavorite(item, event) {
+  if (event) event.stopPropagation();
+  const key = itemKey(item);
+  const idx = localFolder.favorites.findIndex(saved => itemKey(saved) === key);
+  if (idx >= 0) {
+    localFolder.favorites.splice(idx, 1);
+  } else {
+    localFolder.favorites.unshift({ ...item, savedAt: Date.now() });
+  }
+  saveLocalFolder();
+  renderCards();
+  renderEndless();
+  renderFolderPanel();
+}
+
+function toggleFavoriteFromButton(btn, event) {
+  const item = JSON.parse(decodeURIComponent(btn.dataset.item));
+  toggleFavorite(item, event);
+  updateFavoriteButtonState(btn, item);
+}
+
+function updateFavoriteButtonState(btn, item) {
+  const saved = isFavorite(item);
+  btn.classList.toggle('saved', saved);
+  const icon = btn.querySelector('svg');
+  const label = btn.querySelector('.save-card-label');
+  if (icon) icon.setAttribute('fill', saved ? 'currentColor' : 'none');
+  if (label) label.textContent = saved ? '已收藏' : '收藏';
+}
+
+function addHistoryItem(item) {
+  const key = itemKey(item);
+  localFolder.history = localFolder.history.filter(saved => itemKey(saved) !== key);
+  localFolder.history.unshift({ ...item, savedAt: Date.now() });
+  localFolder.history = localFolder.history.slice(0, 50);
+  saveLocalFolder();
+  markViewedCards(item);
+  renderFolderPanel();
+}
+
+function favoriteButton(item) {
+  const saved = isFavorite(item);
+  const encodedItem = encodeURIComponent(JSON.stringify(item));
+  return `
+    <button class="save-card-btn ${saved ? 'saved' : ''}" data-item="${encodedItem}" onclick="toggleFavoriteFromButton(this, event)">
+      <svg viewBox="0 0 24 24" fill="${saved ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
+        <path d="M3 6.5A2.5 2.5 0 0 1 5.5 4H10l2 2h6.5A2.5 2.5 0 0 1 21 8.5v8A2.5 2.5 0 0 1 18.5 19h-13A2.5 2.5 0 0 1 3 16.5z"/>
+        <path d="M3 9h18"/>
+      </svg>
+      <span class="save-card-label">${saved ? '已收藏' : '收藏'}</span>
+    </button>`;
+}
+
+function reportButton(reportUrl) {
+  return `
+    <a href="${escapeHtml(safeExternalUrl(reportUrl))}" target="_blank" rel="noopener" class="btn-report">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 3 22 20H2L12 3z"/>
+        <path d="M12 9v5"/>
+        <path d="M12 17h.01"/>
+      </svg>
+      回報
+    </a>`;
+}
+
+function modalFooterActions(link, folderItem, reportUrl, hasVideo = false) {
+  const videoText = hasVideo
+    ? '<span class="btn-video-inline"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="7 4 19 12 7 20 7 4"/></svg>附影片</span>'
+    : '';
+  return `
+    <div class="modal-footer-actions">
+      <a href="${escapeHtml(safeExternalUrl(link))}" target="_blank" rel="noopener" class="btn-fb">
+        <span>查看面板詳情</span>${videoText}
+      </a>
+      <div class="modal-secondary-actions">
+        ${favoriteButton(folderItem)}
+        ${reportButton(reportUrl)}
+      </div>
+    </div>`;
+}
+
+function groupChangelogByDate(items) {
+  const sortedItems = items
+    .map((item, index) => ({ ...item, index }))
+    .sort((a, b) => b.date.localeCompare(a.date) || a.index - b.index);
+  const groups = new Map();
+  sortedItems.forEach(item => {
+    if (!groups.has(item.date)) groups.set(item.date, []);
+    groups.get(item.date).push(item.note);
+  });
+  return [...groups.entries()].map(([date, notes]) => ({ date, notes }));
+}
+
+function formatChangelogDate(date) {
+  return String(date || '').replace(/-/g, '.');
+}
+
+function formatChangelogDateParts(date) {
+  const [year = '', month = '', day = ''] = String(date || '').split('-');
+  return {
+    year,
+    day: month && day ? `${month}.${day}` : formatChangelogDate(date)
+  };
+}
+
+function renderVersionHistory() {
+  const list = document.getElementById('versionHistoryList');
+  if (!list) return;
+  if (changelogLoadError) {
+    list.innerHTML = '<div class="version-history-empty">版本紀錄載入失敗，請稍後再試。</div>';
+    return;
+  }
+  if (!changelogLoaded) {
+    list.innerHTML = `<div class="version-history-empty">${loadingMarkup()}</div>`;
+    return;
+  }
+  if (CHANGELOG_DATA.length === 0) {
+    list.innerHTML = '<div class="version-history-empty">目前尚無版本紀錄。</div>';
+    return;
+  }
+  list.innerHTML = groupChangelogByDate(CHANGELOG_DATA).map(group => {
+    const dateParts = formatChangelogDateParts(group.date);
+    return `
+    <div class="version-history-group">
+      <div class="version-history-date" aria-label="${escapeHtml(formatChangelogDate(group.date))}">
+        <span class="version-history-year">${escapeHtml(dateParts.year)}</span>
+        <span class="version-history-day">${escapeHtml(dateParts.day)}</span>
+      </div>
+      <ul class="version-history-items">
+        ${group.notes.map(note => `<li>${escapeHtml(note)}</li>`).join('')}
+      </ul>
+    </div>
+  `;
+  }).join('');
+}
+
+function switchInfoTab(tab) {
+  const activeTab = ['guide', 'intro', 'version'].includes(tab) ? tab : 'guide';
+  document.querySelector('.info-tabs')?.setAttribute('data-active', activeTab);
+  document.querySelectorAll('.info-tab').forEach(btn => {
+    const isActive = btn.dataset.tab === activeTab;
+    btn.classList.toggle('active', isActive);
+    btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+  });
+  document.querySelectorAll('.info-panel').forEach(panel => {
+    const isActive = panel.dataset.panel === activeTab;
+    panel.classList.toggle('active', isActive);
+    panel.hidden = !isActive;
+  });
+  const infoContent = document.querySelector('.info-content');
+  if (infoContent) infoContent.scrollTop = 0;
+  if (activeTab === 'version') renderVersionHistory();
+}
+
+function openInfoModal() {
+  switchInfoTab('guide');
+  renderVersionHistory();
+  document.getElementById('infoOverlay')?.classList.add('show');
+}
+
+function closeInfoModal(e) {
+  if (e.target === document.getElementById('infoOverlay')) closeInfoModalDirect();
+}
+
+function closeInfoModalDirect() {
+  document.getElementById('infoOverlay')?.classList.remove('show');
+}
+
+function toggleFolderPanel() {
+  const panel = document.getElementById('localFolderPanel');
+  if (!panel) return;
+  panel.classList.toggle('show');
+  renderFolderPanel();
+}
+
+function closeFolderPanel() {
+  document.getElementById('localFolderPanel')?.classList.remove('show');
+}
+
+function switchFolderTab(tab) {
+  activeFolderTab = tab;
+  renderFolderPanel();
+}
+
+function clearFolderTab() {
+  const message = activeFolderTab === 'favorites'
+    ? '以下操作無法復原，是否確認刪除【收藏】？'
+    : '以下操作無法復原，是否確認刪除【瀏覽記錄】及【已看過】標籤？';
+  if (!confirm(message)) return;
+  localFolder[activeFolderTab] = [];
+  saveLocalFolder();
+  renderCards();
+  renderEndless();
+  renderFolderPanel();
+}
+
+function openFolderItemFromButton(btn) {
+  const item = JSON.parse(decodeURIComponent(btn.dataset.item));
+  if (item.type === 'panel') {
+    const d = DATA.find(row => row.link === item.link);
+    if (d) {
+      openPanelDetail(d, false);
+      return;
+    }
+  }
+  if (item.type === 'endless') {
+    const d = ENDLESS_ALL.find(row => row.link === item.link);
+    if (d) {
+      openEndlessDetail(d, false);
+      return;
+    }
+  }
+  closeFolderPanel();
+  window.open(safeExternalUrl(item.link), '_blank', 'noopener');
+}
+
+function renderFolderPanel() {
+  const panel = document.getElementById('localFolderPanel');
+  const list = document.getElementById('folderList');
+  const clearBtn = document.getElementById('folderClearBtn');
+  if (!panel || !list || !clearBtn) return;
+  document.querySelector('.folder-tabs')?.setAttribute('data-active', activeFolderTab);
+  document.querySelectorAll('.folder-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === activeFolderTab);
+  });
+  const items = localFolder[activeFolderTab] || [];
+  clearBtn.disabled = items.length === 0;
+  if (items.length === 0) {
+    list.innerHTML = `<div class="folder-empty">${activeFolderTab === 'favorites' ? '尚未收藏任何資料' : '尚無瀏覽記錄'}</div>`;
+    return;
+  }
+  list.innerHTML = items.map(item => {
+    const displayItem = displayFolderItem(item);
+    const encodedItem = encodeURIComponent(JSON.stringify(item));
+    return `
+    <div class="folder-item">
+      <div>
+        <div class="folder-item-title">${escapeHtml(displayItem.title)}</div>
+        <div class="folder-item-meta">${escapeHtml(displayItem.meta || '')}${displayItem.badge ? `｜${escapeHtml(displayItem.badge)}` : ''}</div>
+      </div>
+      <button class="folder-item-link" data-item="${encodedItem}" onclick="openFolderItemFromButton(this)">查看</button>
+    </div>
+  `;
+  }).join('');
+}
+
+function rowMatchesDynamicFilter(row, side, filter) {
+  const prefix = side === 'upper' ? 'upper' : 'lower';
+  if (filter.type === 'dir') return row[`${prefix}Dir`] === filter.value;
+  if (filter.type === 'card') return row[`${prefix}Card`] === filter.value;
+  if (filter.type === 'partner') return row[`${prefix}Partner`] === filter.value;
+  return true;
+}
+
+function rowMatchesDynamicFilterState(row, state) {
+  return ['upper', 'lower'].every(side =>
+    state[side].every(filter => rowMatchesDynamicFilter(row, side, filter))
+  );
+}
+
+function dynamicStateHasMatches(baseData, state) {
+  return baseData.some(row => rowMatchesDynamicFilterState(row, state));
+}
+
+function cloneDynamicFilterState() {
+  return {
+    upper: state.panel.layerFilters.upper.map(filter => ({ ...filter })),
+    lower: state.panel.layerFilters.lower.map(filter => ({ ...filter }))
+  };
+}
+
+function isDynamicOptionCompatible(side, option) {
+  const next = cloneDynamicFilterState();
+  next[side] = next[side].filter(filter => filter.type !== option.type);
+  next[side].push({ type: option.type, value: option.value });
+  return dynamicStateHasMatches(state.panel.dynamicBaseData, next);
+}
+
+function toggleDynamicFilter(side, type, value) {
+  if (appLoading) return;
+  const selected = state.panel.layerFilters[side].find(
+    filter => filter.type === type && filter.value === value
+  );
+
+  if (selected) {
+    state.panel.layerFilters[side] = state.panel.layerFilters[side].filter(
+      filter => filter.type !== type
+    );
+    applyFilters();
+    return;
+  }
+
+  const next = { upper: [], lower: [] };
+  next[side].push({ type, value, order: ++state.panel.dynamicFilterOrder });
+
+  const candidates = ['upper', 'lower']
+    .flatMap(candidateSide =>
+      state.panel.layerFilters[candidateSide]
+        .filter(filter => !(candidateSide === side && filter.type === type))
+        .map(filter => ({ side: candidateSide, filter }))
+    )
+    .sort((a, b) => (b.filter.order || 0) - (a.filter.order || 0));
+
+  candidates.forEach(({ side: candidateSide, filter }) => {
+    const trial = {
+      upper: next.upper.map(item => ({ ...item })),
+      lower: next.lower.map(item => ({ ...item }))
+    };
+    trial[candidateSide] = trial[candidateSide]
+      .filter(item => item.type !== filter.type);
+    trial[candidateSide].push({ ...filter });
+    if (dynamicStateHasMatches(state.panel.dynamicBaseData, trial)) {
+      next.upper = trial.upper;
+      next.lower = trial.lower;
+    }
+  });
+
+  state.panel.layerFilters = next;
+  applyFilters();
+}
+
+function renderDynamicFilterSide(side, optionsByType) {
+  const el = document.getElementById(side === 'upper' ? 'upperDynamicChips' : 'lowerDynamicChips');
+  if (!el) return;
+  const hasOptions = DYNAMIC_FILTER_CATEGORIES.some(
+    type => optionsByType[type]?.length
+  );
+  if (!hasOptions) {
+    el.innerHTML = '<span class="dynamic-empty">無此層配置</span>';
+    return;
+  }
+  el.innerHTML = DYNAMIC_FILTER_CATEGORIES.flatMap(type => {
+    const options = optionsByType[type] || [];
+    if (options.length === 0) return '';
+    return options.map(option => {
+      const active = isDynamicFilterActive(side, option);
+      const hasActiveSibling = state.panel.layerFilters[side].some(
+        filter => filter.type === option.type && filter.value !== option.value
+      );
+      const compatible = active || (!hasActiveSibling && isDynamicOptionCompatible(side, option));
+      return `
+        <button class="dynamic-chip ${active ? 'active' : ''} ${compatible ? '' : 'is-unavailable'}"
+          data-side="${side}"
+          data-type="${option.type}"
+          data-value="${escapeHtml(option.value)}"
+          aria-pressed="${active}">
+          ${escapeHtml(option.label)}
+        </button>
+      `;
+    });
+  }).join('');
+}
+
+function renderDynamicFilters(baseData, layerNum) {
+  const panel = document.getElementById('dynamicFilterPanel');
+  const noMatch = document.getElementById('dynamicNoMatch');
+  if (!panel) return;
+  const shouldShow = state.panel.orbit && layerNum !== null;
+  panel.classList.toggle('show', shouldShow);
+  if (!shouldShow) {
+    state.panel.layerFilters = { upper: [], lower: [] };
+    state.panel.dynamicBaseData = [];
+    if (noMatch) noMatch.classList.remove('show');
+    return;
+  }
+  state.panel.dynamicBaseData = baseData;
+  renderDynamicFilterSide('upper', collectLayerOptions(baseData, 'upper'));
+  renderDynamicFilterSide('lower', collectLayerOptions(baseData, 'lower'));
+}
+
+function updateAdvancedFilterControl() {
+  const panel = document.getElementById('advancedFilterPanel');
+  const controls = document.getElementById('panelResultsControls');
+  const toggle = document.getElementById('advancedFilterToggle');
+  const chevron = document.getElementById('advancedFilterChevron');
+  const shouldShowAdvanced = getExactLayerValue() !== null;
+
+  if (!shouldShowAdvanced) state.panel.advancedFilterOpen = false;
+  if (controls) {
+    controls.hidden = false;
+    controls.classList.toggle('is-placeholder', !shouldShowAdvanced);
+    controls.setAttribute('aria-hidden', String(!shouldShowAdvanced));
+  }
+  if (panel) panel.hidden = !shouldShowAdvanced || !state.panel.advancedFilterOpen;
+  if (toggle) {
+    toggle.hidden = false;
+    toggle.disabled = !shouldShowAdvanced;
+    toggle.setAttribute('aria-expanded', String(state.panel.advancedFilterOpen));
+  }
+  if (chevron) chevron.textContent = state.panel.advancedFilterOpen ? '⌃' : '⌄';
+}
+
+function toggleAdvancedFilters() {
+  if (appLoading || getExactLayerValue() === null) return;
+  state.panel.advancedFilterOpen = !state.panel.advancedFilterOpen;
+  updateAdvancedFilterControl();
+}
+
+function clearAdvancedFilterState() {
+  state.panel.layerFilters = { upper: [], lower: [] };
+  const videoOnly = document.getElementById('videoOnly');
+  if (videoOnly) videoOnly.checked = false;
+}
+
+function resetAdvancedFilters() {
+  if (appLoading || getExactLayerValue() === null) return;
+  clearAdvancedFilterState();
+  applyFilters();
+}
+
+function matchesLayerFilters(d, side) {
+  const filters = state.panel.layerFilters[side];
+  if (filters.length === 0) return true;
+  return filters.every(filter => rowMatchesDynamicFilter(d, side, filter));
+}
+
+function applyFilters() {
+  if (appLoading) return;
+  const layerNum = getExactLayerValue();
+  const activeRange = layerNum === null && state.panel.rangeKey
+    ? getLayerRanges().find(range => range.key === state.panel.rangeKey) || null
+    : null;
+  const videoOnly = document.getElementById('videoOnly').checked;
+  const shouldSearch = Boolean(state.panel.orbit || state.panel.rangeKey || videoOnly);
+  if (!shouldSearch) {
+    state.panel.layerFilters = { upper: [], lower: [] };
+    state.panel.results = [...DATA];
+    const noMatch = document.getElementById('dynamicNoMatch');
+    if (noMatch) noMatch.classList.remove('show');
+    renderDynamicFilters([], null);
+    updateAdvancedFilterControl();
+    renderCards();
+    return;
+  }
+  const baseData = getBasePanelData(layerNum, videoOnly, activeRange);
+  renderDynamicFilters(baseData, layerNum);
+  state.panel.results = baseData.filter(d => matchesLayerFilters(d, 'upper') && matchesLayerFilters(d, 'lower'));
+  const noMatch = document.getElementById('dynamicNoMatch');
+  const hasSelectedDynamicFilters = state.panel.layerFilters.upper.length > 0 || state.panel.layerFilters.lower.length > 0;
+  if (noMatch) noMatch.classList.toggle('show', hasSelectedDynamicFilters && state.panel.results.length === 0);
+  updateAdvancedFilterControl();
+  renderCards();
+}
+
+function resetFilters() {
+  if (appLoading) return;
+  state.panel.committedOrbit = null;
+  state.panel.committedLayer = null;
+  state.panel.orbit = null;
+  state.panel.layerFilters = { upper: [], lower: [] };
+  state.panel.rangeKey = null;
+  state.panel.manualEntryOpen = false;
+  state.panel.manualLayerValue = '';
+  state.panel.advancedFilterOpen = false;
+  document.querySelectorAll('#orbitChips .chip').forEach(c => {
+    c.classList.remove('active');
+    c.setAttribute('aria-pressed', 'false');
+  });
+  updatePanelFilterUI();
+  document.getElementById('videoOnly').checked = false;
+  applyFilters();
+}
+
+const PREVIEW_ADAPTERS = {
+  panel: {
+    source: () => DATA,
+    gridId: 'cardsGrid',
+    emptyText: '目前尚無軌道資料',
+    sectionSelector: '#section-panel.active .panel-preview-viewport',
+    renderCard: (item, index) => panelCardMarkup(item, { previewType: 'panel', previewIndex: index }),
+    openDetail: openPanelDetail
+  },
+  endless: {
+    source: () => ENDLESS_ALL,
+    gridId: 'endlessGrid',
+    emptyText: '目前尚無無盡挑戰資料',
+    sectionSelector: '#section-endless.active .panel-preview-viewport',
+    renderCard: (item, index) => endlessCardMarkup(item, { previewType: 'endless', previewIndex: index }),
+    openDetail: openEndlessDetail
+  }
+};
+
+const previewModule = {
+  sample(source, count = 10) {
+    const pool = [...source];
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    return pool.slice(0, Math.min(count, pool.length));
+  },
+
+  prime(type, count = 10) {
+    const adapter = PREVIEW_ADAPTERS[type];
+    if (!adapter) return [];
+    state.preview.items[type] = this.sample(adapter.source(), count);
+    return state.preview.items[type];
+  },
+
+  get(type) {
+    const adapter = PREVIEW_ADAPTERS[type];
+    if (!adapter) return [];
+    if (state.preview.items[type].length === 0 && adapter.source().length > 0) {
+      this.prime(type);
+    }
+    return state.preview.items[type];
+  },
+
+  render(type, targetGrid = null) {
+    const adapter = PREVIEW_ADAPTERS[type];
+    if (!adapter) return;
+    const grid = targetGrid || document.getElementById(adapter.gridId);
+    if (!grid) return;
+    const previewData = this.get(type);
+    if (previewData.length === 0) {
+      grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><p>${adapter.emptyText}</p></div>`;
+      updateScrollButtons();
+      return;
+    }
+    const loopData = previewData.length > 1 ? [...previewData, ...previewData, ...previewData] : previewData;
+    grid.innerHTML = `
+      <div class="panel-preview">
+        <div class="panel-preview-viewport">
+          <div class="panel-preview-track">
+            ${loopData.map((item, index) => adapter.renderCard(item, index % previewData.length)).join('')}
+          </div>
+        </div>
+      </div>`;
+    setupPreviewScroll(adapter.sectionSelector, previewData.length);
+    updateScrollButtons();
+  },
+
+  open(type, index) {
+    const adapter = PREVIEW_ADAPTERS[type];
+    const item = this.get(type)[index];
+    if (!adapter || !item) return;
+    state.preview.modalPaused = true;
+    adapter.openDetail(item);
+  }
+};
+
+function openResultCard(type, index) {
+  const adapter = PREVIEW_ADAPTERS[type];
+  const items = type === 'panel' ? state.panel.results : ENDLESS_DATA;
+  const item = items[index];
+  if (adapter && item) adapter.openDetail(item);
+}
+
+function bindDelegatedInteractions() {
+  const layerSuggestionPanel = document.getElementById('layerSuggestionPanel');
+  layerSuggestionPanel?.addEventListener('click', event => {
+    const actionButton = event.target.closest('[data-layer-action]');
+    const action = actionButton?.dataset.layerAction;
+    if (action === 'back') return backToLayerRanges();
+    if (action === 'manual-open') return openManualLayerEntry();
+    if (action === 'manual-close') return closeManualLayerEntry();
+    if (action === 'manual-submit') return submitManualLayerEntry();
+
+    const layerButton = event.target.closest('[data-layer]');
+    if (layerButton) selectSuggestedLayer(Number(layerButton.dataset.layer));
+
+    const rangeButton = event.target.closest('[data-layer-range]');
+    if (rangeButton) selectLayerRange(rangeButton.dataset.layerRange);
+  });
+  layerSuggestionPanel?.addEventListener('keydown', event => {
+    if (!event.target.matches('.layer-manual-input')) return;
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      submitManualLayerEntry();
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      closeManualLayerEntry();
+    }
+  });
+  layerSuggestionPanel?.addEventListener('input', event => {
+    if (!event.target.matches('.layer-manual-input')) return;
+    state.panel.manualLayerValue = event.target.value;
+    clearManualLayerError(event.target);
+  });
+  layerSuggestionPanel?.addEventListener('pointermove', () => {
+    layerSuggestionPanel.classList.remove('suppress-hover');
+  });
+  layerSuggestionPanel?.addEventListener('pointerleave', () => {
+    layerSuggestionPanel.classList.remove('suppress-hover');
+  });
+
+  document.getElementById('dynamicFilterPanel')?.addEventListener('click', event => {
+    const button = event.target.closest('.dynamic-chip[data-side][data-type][data-value]');
+    if (button) toggleDynamicFilter(button.dataset.side, button.dataset.type, button.dataset.value);
+  });
+
+  document.getElementById('endlessDynamicFilterPanel')?.addEventListener('click', event => {
+    const button = event.target.closest('.dynamic-chip[data-endless-card]');
+    if (button) toggleEndlessCardFilter(button.dataset.endlessCard);
+  });
+
+  const handleResultActivation = event => {
+    if (event.type === 'keydown' && event.key !== 'Enter' && event.key !== ' ') return;
+    if (event.target.closest('a, button')) return;
+    const card = event.target.closest('[data-result-type][data-result-index]');
+    if (!card || !event.currentTarget.contains(card)) return;
+    if (event.type === 'keydown') event.preventDefault();
+    openResultCard(card.dataset.resultType, Number(card.dataset.resultIndex));
+  };
+
+  ['panelResultsView', 'endlessResultsView'].forEach(id => {
+    const view = document.getElementById(id);
+    view?.addEventListener('click', handleResultActivation);
+    view?.addEventListener('keydown', handleResultActivation);
+  });
+}
+
+function hasPanelFilters() {
+  const videoOnly = document.getElementById('videoOnly');
+  return Boolean(
+    state.panel.orbit ||
+    state.panel.rangeKey ||
+    (videoOnly && videoOnly.checked) ||
+    state.panel.layerFilters.upper.length > 0 ||
+    state.panel.layerFilters.lower.length > 0
+  );
+}
+
+function panelCardMarkup(d, { resultIndex = null, previewType = '', previewIndex = null } = {}) {
+  const folderItem = panelFolderItem(d);
+  const orbit = escapeHtml(d.orbit);
+  const orbitLabel = escapeHtml(ORBIT_LABEL[d.orbit] || d.orbit);
+  const previewAttrs = previewType ? ` data-preview-type="${previewType}" data-preview-index="${previewIndex}"` : '';
+  const resultAttrs = Number.isInteger(resultIndex)
+    ? ` data-result-type="panel" data-result-index="${resultIndex}" role="button" tabindex="0"`
+    : '';
+  return `
+    <div class="panel-card${viewedCardClass(folderItem)}" data-view-key="${escapeHtml(encodedItemKey(folderItem))}" data-orbit="${orbit}"${previewAttrs}${resultAttrs}>
+      ${viewedCardMarkup(folderItem)}
+      <div class="card-orbit-bar">
+        <div class="card-labels panel-card-title">
+          <span class="orbit-badge" data-orbit="${orbit}">${orbitLabel}</span>
+          <span class="layer-num">${escapeHtml(String(d.layer))} 層</span>
+        </div>
+      </div>
+      <div class="layer-section">
+        ${cardLayerBlock(d.upperCard, d.upperPartner, d.upperDir, '▲ 上層')}
+        ${cardLayerBlock(d.lowerCard, d.lowerPartner, d.lowerDir, '▼ 下層')}
+      </div>
+      <div class="card-footer">
+        ${d.hasVideo ? videoBadgeMarkup() : '<span></span>'}
+        <span class="link-hint">點擊查看紀錄 →</span>
+      </div>
+    </div>`;
+}
+
+function stopPreviewAutoScroll() {
+  if (!state.preview.autoFrame) return;
+  window.cancelAnimationFrame(state.preview.autoFrame);
+  state.preview.autoFrame = null;
+}
+
+function setupPreviewScroll(selector, itemCount) {
+  const viewport = document.querySelector(selector);
+  if (!viewport) return;
+  let startX = 0;
+  let startY = 0;
+  let startScrollLeft = 0;
+  let isMouseDragging = false;
+  let isAutoPaused = false;
+  let resumeAutoTimer = null;
+  let moved = false;
+  let pressedPreviewCard = null;
+  let wrapping = false;
+
+  stopPreviewAutoScroll();
+
+  const pauseAutoScroll = () => {
+    isAutoPaused = true;
+    window.clearTimeout(resumeAutoTimer);
+  };
+
+  const resumeAutoScroll = (delay = 700) => {
+    window.clearTimeout(resumeAutoTimer);
+    resumeAutoTimer = window.setTimeout(() => {
+      isAutoPaused = false;
+      state.preview.lastTime = performance.now();
+    }, delay);
+  };
+
+  const getLoopWidth = () => viewport.scrollWidth / 3;
+
+  const wrapScrollPosition = () => {
+    if (wrapping || itemCount <= 1) return;
+    const loopWidth = getLoopWidth();
+    if (!loopWidth) return;
+    wrapping = true;
+    if (viewport.scrollLeft < loopWidth * 0.5) {
+      viewport.scrollLeft += loopWidth;
+    } else if (viewport.scrollLeft > loopWidth * 1.5) {
+      viewport.scrollLeft -= loopWidth;
+    }
+    wrapping = false;
+  };
+
+  viewport.addEventListener('pointerdown', event => {
+    pauseAutoScroll();
+    moved = false;
+    startX = event.clientX;
+    startY = event.clientY;
+    pressedPreviewCard = event.target.closest('[data-preview-type][data-preview-index]');
+    if (event.pointerType !== 'mouse') return;
+    isMouseDragging = true;
+    startScrollLeft = viewport.scrollLeft;
+    viewport.setPointerCapture(event.pointerId);
+  });
+
+  viewport.addEventListener('pointermove', event => {
+    if (!isMouseDragging || event.pointerType !== 'mouse' || !viewport.hasPointerCapture(event.pointerId)) return;
+    const delta = event.clientX - startX;
+    if (Math.abs(delta) > 4) moved = true;
+    viewport.scrollLeft = startScrollLeft - delta;
+    wrapScrollPosition();
+  });
+
+  viewport.addEventListener('pointerup', event => {
+    const deltaX = Math.abs(event.clientX - startX);
+    const deltaY = Math.abs(event.clientY - startY);
+    if (!moved && deltaX < 8 && deltaY < 8 && pressedPreviewCard) {
+      event.preventDefault();
+      const idx = Number(pressedPreviewCard.dataset.previewIndex);
+      previewModule.open(pressedPreviewCard.dataset.previewType, idx);
+    }
+    pressedPreviewCard = null;
+    resumeAutoScroll();
+    if (event.pointerType !== 'mouse') return;
+    isMouseDragging = false;
+    if (viewport.hasPointerCapture(event.pointerId)) {
+      viewport.releasePointerCapture(event.pointerId);
+    }
+  });
+
+  viewport.addEventListener('pointercancel', event => {
+    pressedPreviewCard = null;
+    resumeAutoScroll();
+    if (event.pointerType !== 'mouse') return;
+    isMouseDragging = false;
+  });
+  viewport.addEventListener('mouseenter', pauseAutoScroll);
+  viewport.addEventListener('mouseleave', () => resumeAutoScroll());
+  viewport.addEventListener('focusin', pauseAutoScroll);
+  viewport.addEventListener('focusout', () => resumeAutoScroll());
+  viewport.addEventListener('scroll', wrapScrollPosition, { passive: true });
+  viewport.addEventListener('click', event => {
+    if (!moved) return;
+    event.preventDefault();
+    event.stopPropagation();
+    moved = false;
+  }, true);
+
+  requestAnimationFrame(() => {
+    if (itemCount <= 1) return;
+    viewport.scrollLeft = getLoopWidth();
+    state.preview.lastTime = performance.now();
+    const autoScroll = time => {
+      const elapsed = Math.min(time - state.preview.lastTime, 80);
+      state.preview.lastTime = time;
+      if (!document.hidden && !isAutoPaused && !state.preview.modalPaused) {
+        viewport.scrollLeft += elapsed * PANEL_PREVIEW_SPEED;
+        wrapScrollPosition();
+      }
+      state.preview.autoFrame = window.requestAnimationFrame(autoScroll);
+    };
+    state.preview.autoFrame = window.requestAnimationFrame(autoScroll);
+  });
+}
+
+function cardLayerBlock(card, partner, dir, label) {
+  if (card === 'N/A') return `<div class="layer-block layer-block-empty">
+    <div class="layer-head">
+      <div class="layer-label">${escapeHtml(label)}</div>
+      <span class="dir-tag dir-placeholder" aria-hidden="true">順譜</span>
+    </div>
+    <div class="layer-data-grid layer-data-grid-empty">
+      <div class="layer-data-cell layer-data-empty"><div class="na-text">單層面板</div></div>
+    </div>
+  </div>`;
+  const safeDir = dir === '順' || dir === '逆' ? dir : '';
+  const dirHtml = safeDir
+    ? `<span class="dir-tag dir-${safeDir}">${safeDir}譜</span>`
+    : '';
+  return `<div class="layer-block">
+    <div class="layer-head">
+      <div class="layer-label">${escapeHtml(label)}</div>
+      ${dirHtml}
+    </div>
+    <div class="layer-data-grid">
+      <div class="layer-data-cell"><div class="card-name">${escapeHtml(card)}${rankIconMarkup(card)}</div></div>
+      <div class="layer-data-cell"><div class="partner-name">${escapeHtml(partner)}</div></div>
+    </div>
+  </div>`;
+}
+
+function swapResultsGrid(view, infoId, gridId, gridClass, infoText, key, renderGrid) {
+  if (!view) return;
+
+  let info = view.querySelector(`#${infoId}`);
+  if (!info) {
+    info = document.createElement('div');
+    info.className = 'results-info';
+    info.id = infoId;
+    view.prepend(info);
+  }
+  info.classList.remove('content-transition', 'is-fading');
+  info.innerHTML = infoText;
+
+  stopPreviewAutoScroll();
+  fadeVersions[key] = (fadeVersions[key] || 0) + 1;
+  const version = fadeVersions[key];
+
+  // Replace the old result layer immediately so rapid range changes cannot
+  // leave an old grid or count visible underneath the new one.
+  const nextGrid = document.createElement('div');
+  nextGrid.className = `${gridClass} content-transition is-fading`;
+  nextGrid.id = gridId;
+  const oldGrid = view.querySelector(`#${gridId}`);
+  if (oldGrid) oldGrid.replaceWith(nextGrid);
+  else view.append(nextGrid);
+
+  renderGrid(nextGrid);
+  window.requestAnimationFrame(() => {
+    if (version === fadeVersions[key]) nextGrid.classList.remove('is-fading');
+  });
+  updateScrollButtons();
+}
+
+function renderCards() {
+  const resultsView = document.getElementById('panelResultsView');
+  const hasFilters = hasPanelFilters();
+  const dataSnapshot = [...state.panel.results];
+  const infoText = hasFilters
+    ? `共找到 <span>${dataSnapshot.length}</span> 筆結果`
+    : `目前收錄軌道資料 <span>${DATA.length}</span> 筆`;
+  swapResultsGrid(resultsView, 'resultsInfo', 'cardsGrid', 'cards-grid', infoText, 'panel-results', grid => {
+    if (!hasFilters) {
+      previewModule.render('panel', grid);
+      return;
+    }
+    stopPreviewAutoScroll();
+    if (dataSnapshot.length === 0) {
+      grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div style="font-size:2rem;margin-bottom:0.5rem;opacity:0.3">✦</div><p>找不到符合條件的結果，期待您成為第一位分享者</p></div>`;
+      return;
+    }
+    grid.innerHTML = dataSnapshot.map((d, i) => panelCardMarkup(d, { resultIndex: i })).join('');
+  });
+}
+
+function videoBadgeMarkup() {
+  return '<span class="video-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>附影片</span>';
+}
+
+function rankIconMarkup(card) {
+  const text = String(card || '').trim();
+  if (text === '無套裝') return '';
+  const match = text.match(/^([0-3])階/);
+  if (!match) return '';
+  const rank = match[1];
+  return `<img class="rank-icon" src="assets/ranks/R${rank}.png" alt="${rank}階" loading="lazy">`;
+}
+
+function companionIconMarkup(partner) {
+  const text = String(partner || '').trim();
+  if (!text) return '';
+  const src = `assets/companions/${encodeURIComponent(text)}.png`;
+  return `<img class="companion-avatar" src="${src}" alt="" aria-hidden="true" loading="lazy" onerror="this.remove()">`;
+}
+
+function companionInlineMarkup(partner) {
+  const text = String(partner || '').trim();
+  if (!text) return '';
+  return `<span class="companion-inline">${companionIconMarkup(text)}<span class="companion-name">${escapeHtml(text)}</span></span>`;
+}
+
+function modalLayerTitleMarkup(label) {
+  return `<span class="modal-config-layer">${escapeHtml(label)}</span>`;
+}
+
+function modalDirBadgeMarkup(dir, hidden = false) {
+  const hiddenAttr = hidden ? ' aria-hidden="true"' : '';
+  const hiddenClass = hidden ? ' dir-placeholder' : '';
+  if (dir === '順' || dir === '逆') {
+    return `<span class="modal-config-dir dir-${dir}${hiddenClass}"${hiddenAttr}>${dir}譜</span>`;
+  }
+  return `<span class="modal-config-dir dir-na${hiddenClass}"${hiddenAttr}>—</span>`;
+}
+
+function modalConfigRow(label, card, partner, dir) {
+  if (card === 'N/A') {
+    const markerClass = label === '上層' ? 'is-upper' : 'is-lower';
+    return `<div class="modal-config-section modal-config-section-empty">
+      <span class="modal-config-marker ${markerClass}" aria-hidden="true"></span>
+      <div class="modal-config-layer-row">
+        ${modalLayerTitleMarkup(label)}
+        ${modalDirBadgeMarkup('順', true)}
+      </div>
+      <div class="modal-config-fields modal-config-fields-empty">
+        <div class="modal-config-field modal-config-field-empty">
+          <div class="modal-config-main modal-config-muted">無此層配置</div>
+        </div>
+      </div>
+    </div>`;
+  }
+  const markerClass = label === '上層' ? 'is-upper' : 'is-lower';
+  return `<div class="modal-config-section">
+    <span class="modal-config-marker ${markerClass}" aria-hidden="true"></span>
+    <div class="modal-config-layer-row">
+      ${modalLayerTitleMarkup(label)}
+      ${modalDirBadgeMarkup(dir)}
+    </div>
+    <div class="modal-config-fields">
+      <div class="modal-config-field">
+        <div class="modal-config-label">日卡及階數</div>
+        <div class="modal-config-main card-value"><span class="card-rank-text">${escapeHtml(card)}</span>${rankIconMarkup(card)}</div>
+      </div>
+      <div class="modal-config-field partner-field">
+        <div class="modal-config-label">搭檔</div>
+        <div class="modal-config-main partner-value">${companionInlineMarkup(partner)}</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function modalConfigTable(d) {
+  return `<div class="modal-config-detail">
+    ${modalConfigRow('上層', d.upperCard, d.upperPartner, d.upperDir)}
+    ${modalConfigRow('下層', d.lowerCard, d.lowerPartner, d.lowerDir)}
+  </div>`;
+}
+
+function openPanelDetail(d, recordHistory = true) {
+  const folderItem = panelFolderItem(d);
+  const wasViewedBeforeOpen = isViewed(folderItem);
+  if (recordHistory) addHistoryItem(folderItem);
+  setModalViewed(wasViewedBeforeOpen);
+  const modalEl = document.getElementById('modal');
+  const upperBlock = document.getElementById('mUpperBlock');
+  const lowerBlock = document.getElementById('mLowerBlock');
+  modalEl.classList.add('panel-detail');
+  modalEl.classList.remove('endless-detail');
+  modalEl.dataset.orbit = d.orbit;
+
+  document.getElementById('mOrbit').innerHTML = `<span class="orbit-badge" data-orbit="${escapeHtml(d.orbit)}">${escapeHtml(ORBIT_LABEL[d.orbit] || d.orbit)}</span>`;
+  document.getElementById('mLayer').innerHTML = `<span class="modal-layer-num">${escapeHtml(String(d.layer))}</span><span class="modal-layer-unit">層</span>`;
+  const orbitColors = {
+    開放: 'var(--col-open)', 光: 'var(--col-light)', 冰: 'var(--col-ice)',
+    火: 'var(--col-fire)', 能量: 'var(--col-energy)', 引力: 'var(--col-gravity)',
+    波動: 'var(--col-wave)', 金屬: 'var(--col-metal)'
+  };
+  const orbitButtonColors = {
+    開放: ['var(--col-open-bg)', 'var(--col-open-border)'],
+    光: ['var(--col-light-bg)', 'var(--col-light-border)'],
+    冰: ['var(--col-ice-bg)', 'var(--col-ice-border)'],
+    火: ['var(--col-fire-bg)', 'var(--col-fire-border)'],
+    能量: ['var(--col-energy-bg)', 'var(--col-energy-border)'],
+    引力: ['var(--col-gravity-bg)', 'var(--col-gravity-border)'],
+    波動: ['var(--col-wave-bg)', 'var(--col-wave-border)'],
+    金屬: ['var(--col-metal-bg)', 'var(--col-metal-border)']
+  };
+  modalEl.style.setProperty('--modal-orbit-color', orbitColors[d.orbit] || 'var(--text)');
+  const [orbitBg, orbitBorder] = orbitButtonColors[d.orbit] || ['rgba(89,132,164,0.68)', 'rgba(147,199,231,0.68)'];
+  modalEl.style.setProperty('--modal-orbit-bg', orbitBg);
+  modalEl.style.setProperty('--modal-orbit-bg-strong', orbitBg);
+  modalEl.style.setProperty('--modal-orbit-border', orbitBorder);
+  document.getElementById('mLayer').style.color = '';
+  upperBlock.classList.add('modal-config-table-wrap');
+  upperBlock.querySelector('.modal-block-title')?.remove();
+  lowerBlock.querySelector('.modal-block-title')?.remove();
+  lowerBlock.style.display = 'none';
+  document.getElementById('mUpperContent').innerHTML = modalConfigTable(d);
+  document.getElementById('mLowerContent').innerHTML = '';
+
+  const orbitLabel = ORBIT_LABEL[d.orbit] || d.orbit;
+  const reportUrl = `https://docs.google.com/forms/d/e/1FAIpQLSdu-eI87wlkR2LnTlwc3kzHD4pz_PL1-gydhwCr7W-7HKOxyg/viewform?usp=pp_url&entry.1527588954=${encodeURIComponent(orbitLabel)}&entry.1863774587=${encodeURIComponent(d.layer)}&entry.1242930374=${encodeURIComponent(d.link)}`;
+
+  document.getElementById('mFooter').innerHTML = modalFooterActions(d.link, folderItem, reportUrl, d.hasVideo);
+
+  document.getElementById('modalOverlay').classList.add('show');
+}
+
+function restartActivePreview(tab) {
+  if (tab === 'panel' && !hasPanelFilters()) {
+    setupPreviewScroll(PREVIEW_ADAPTERS.panel.sectionSelector, previewModule.get('panel').length);
+  } else if (tab === 'endless' && !state.endless.partner) {
+    setupPreviewScroll(PREVIEW_ADAPTERS.endless.sectionSelector, previewModule.get('endless').length);
+  } else {
+    stopPreviewAutoScroll();
+  }
+}
+
+function updatePrimaryTabSlider() {
+  const nav = document.querySelector('.tab-nav');
+  const activeBtn = nav?.querySelector('.tab-btn.active');
+  if (!nav || !activeBtn) return;
+
+  const navRect = nav.getBoundingClientRect();
+  const btnRect = activeBtn.getBoundingClientRect();
+  const left = btnRect.left - navRect.left;
+  const width = btnRect.width;
+
+  nav.style.setProperty('--tab-slider-x', `${left}px`);
+  nav.style.setProperty('--tab-slider-w', `${width}px`);
+}
+
+function switchTab(tab, btn) {
+  if (appLoading) return;
+  const nextSection = document.getElementById('section-' + tab);
+  const currentSection = document.querySelector('.section.active');
+  if (!nextSection || currentSection === nextSection) return;
+  if (tabFadeTimer) window.clearTimeout(tabFadeTimer);
+
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelector('.tab-nav')?.setAttribute('data-active', tab);
+  updatePrimaryTabSlider();
+
+  if (currentSection) {
+    currentSection.classList.add('content-transition', 'is-fading');
+  }
+  tabFadeTimer = window.setTimeout(() => {
+    document.querySelectorAll('.section').forEach(s => {
+      s.classList.remove('active', 'is-fading');
+    });
+    nextSection.classList.add('active', 'content-transition', 'is-fading');
+    window.requestAnimationFrame(() => {
+      nextSection.classList.remove('is-fading');
+      restartActivePreview(tab);
+      updateScrollButtons();
+    });
+    tabFadeTimer = null;
+  }, CONTENT_FADE_MS);
+}
+
+function selectPartnerDropdown(value) {
+  if (appLoading) return;
+  state.endless.partner = value || null;
+  state.endless.card = null;
+  applyEndlessFilters();
+}
+
+function collectEndlessCardOptions(data) {
+  const cardMap = new Map();
+  data.forEach(d => addOption(cardMap, 'card', d.card));
+  return sortCardsBySetAndRank([...cardMap.values()]);
+}
+
+function renderEndlessDynamicFilters(baseData) {
+  const panel = document.getElementById('endlessDynamicFilterPanel');
+  const chips = document.getElementById('endlessCardChips');
+  const noMatch = document.getElementById('endlessDynamicNoMatch');
+  if (!panel || !chips) return;
+  const shouldShow = Boolean(state.endless.partner);
+  panel.classList.toggle('show', shouldShow);
+  if (!shouldShow) {
+    state.endless.card = null;
+    if (noMatch) noMatch.classList.remove('show');
+    return;
+  }
+
+  const options = collectEndlessCardOptions(baseData);
+  if (options.length === 0) {
+    chips.innerHTML = '<span class="dynamic-empty">目前無可用日卡</span>';
+    return;
+  }
+  chips.innerHTML = options.map(option => `
+    <button class="dynamic-chip ${state.endless.card === option.value ? 'active' : ''}"
+      data-value="${escapeHtml(option.value)}"
+      data-endless-card="${escapeHtml(option.value)}"
+      aria-pressed="${state.endless.card === option.value}">
+      ${escapeHtml(option.label)}
+    </button>
+  `).join('');
+}
+
+function toggleEndlessCardFilter(value) {
+  if (appLoading) return;
+  state.endless.card = state.endless.card === value ? null : value;
+  applyEndlessFilters();
+}
+
+function clearEndlessDynamicFilters() {
+  if (appLoading) return;
+  state.endless.card = null;
+  applyEndlessFilters();
+}
+
+function applyEndlessFilters() {
+  if (appLoading) return;
+  const videoOnly = document.getElementById('endlessVideoOnly').checked;
+  const baseData = ENDLESS_ALL.filter(d => {
+    if (state.endless.partner && d.partner !== state.endless.partner) return false;
+    if (videoOnly && !d.hasVideo) return false;
+    return true;
+  });
+  renderEndlessDynamicFilters(baseData);
+  ENDLESS_DATA = baseData.filter(d => !state.endless.card || d.card === state.endless.card);
+  const noMatch = document.getElementById('endlessDynamicNoMatch');
+  if (noMatch) noMatch.classList.toggle('show', Boolean(state.endless.card) && ENDLESS_DATA.length === 0);
+  renderEndless();
+}
+
+function resetEndlessFilters() {
+  if (appLoading) return;
+  state.endless.partner = null;
+  state.endless.card = null;
+  document.getElementById('partnerSelect').value = '';
+  document.getElementById('endlessVideoOnly').checked = false;
+  ENDLESS_DATA = [...ENDLESS_ALL];
+  renderEndlessDynamicFilters(ENDLESS_DATA);
+  renderEndless();
+}
+
+function fmtScore(s) {
+  const n = parseInt(String(s).replace(/,/g, ''), 10);
+  if (isNaN(n)) return s;
+  return n.toLocaleString();
+}
+
+function endlessCardMarkup(d, { resultIndex = null, previewType = '', previewIndex = null } = {}) {
+  const folderItem = endlessFolderItem(d);
+  const partner = escapeHtml(d.partner);
+  const card = `${escapeHtml(d.card)}${rankIconMarkup(d.card)}`;
+  const combo = escapeHtml(d.combo);
+  const previewAttrs = previewType ? ` data-preview-type="${previewType}" data-preview-index="${previewIndex}"` : '';
+  const resultAttrs = Number.isInteger(resultIndex)
+    ? ` data-result-type="endless" data-result-index="${resultIndex}" role="button" tabindex="0"`
+    : '';
+  return `
+    <div class="endless-card${viewedCardClass(folderItem)}" data-view-key="${escapeHtml(encodedItemKey(folderItem))}" data-partner="${partner}"${previewAttrs}${resultAttrs}>
+      ${viewedCardMarkup(folderItem)}
+      <div class="endless-card-header">
+        <div class="card-labels">
+          <span class="partner-badge" data-partner="${partner}">${partner}</span>
+        </div>
+        <div class="card-meta-right">
+          <span class="endless-score">${escapeHtml(fmtScore(d.score))} 分</span>
+        </div>
+      </div>
+      <div class="endless-info-row">
+        <span class="endless-info-label">日卡</span>
+        <span class="endless-info-val">${card}</span>
+      </div>
+      <div class="endless-info-row">
+        <span class="endless-info-label">對譜數</span>
+        <span class="combo-tag">${combo} 譜</span>
+      </div>
+      <div class="endless-footer">
+        ${d.hasVideo ? videoBadgeMarkup() : '<span></span>'}
+        <span class="link-hint">點擊查看紀錄 →</span>
+      </div>
+    </div>`;
+}
+
+function renderEndless() {
+  const resultsView = document.getElementById('endlessResultsView');
+  const hasFixedResults = Boolean(state.endless.partner);
+  const dataSnapshot = [...ENDLESS_DATA];
+  const infoText = hasFixedResults
+    ? `共找到 <span>${dataSnapshot.length}</span> 筆結果`
+    : `目前收錄無盡挑戰資料 <span>${ENDLESS_ALL.length}</span> 筆`;
+  swapResultsGrid(resultsView, 'endlessInfo', 'endlessGrid', 'endless-grid', infoText, 'endless-results', grid => {
+    if (!hasFixedResults) {
+      previewModule.render('endless', grid);
+      return;
+    }
+    stopPreviewAutoScroll();
+    if (dataSnapshot.length === 0) {
+      grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div style="font-size:2rem;margin-bottom:0.5rem;opacity:0.3">✦</div><p>找不到符合條件的結果，期待您成為第一位分享者</p></div>`;
+      return;
+    }
+    grid.innerHTML = dataSnapshot.map((d, i) => endlessCardMarkup(d, { resultIndex: i })).join('');
+  });
+}
+
+function openEndlessDetail(d, recordHistory = true) {
+  const folderItem = endlessFolderItem(d);
+  const wasViewedBeforeOpen = isViewed(folderItem);
+  if (recordHistory) addHistoryItem(folderItem);
+  setModalViewed(wasViewedBeforeOpen);
+  const modalEl = document.getElementById('modal');
+  modalEl.classList.remove('panel-detail');
+  modalEl.classList.add('endless-detail');
+  modalEl.removeAttribute('data-orbit');
+  modalEl.style.removeProperty('--modal-orbit-color');
+  modalEl.style.removeProperty('--modal-orbit-bg');
+  modalEl.style.removeProperty('--modal-orbit-bg-strong');
+  modalEl.style.removeProperty('--modal-orbit-border');
+  modalEl.style.removeProperty('--modal-orbit-button-text');
+  document.getElementById('mUpperBlock').classList.remove('modal-config-table-wrap');
+  // remove block titles for endless (no upper/lower layers)
+  document.getElementById('mUpperBlock').querySelector('.modal-block-title') && document.getElementById('mUpperBlock').querySelector('.modal-block-title').remove();
+  document.getElementById('mLowerBlock').querySelector('.modal-block-title') && document.getElementById('mLowerBlock').querySelector('.modal-block-title').remove();
+
+  document.getElementById('mOrbit').innerHTML = `<span class="partner-badge" data-partner="${escapeHtml(d.partner)}">${companionInlineMarkup(d.partner)}</span>`;
+  document.getElementById('mLayer').textContent = fmtScore(d.score) + ' 分';
+  document.getElementById('mLayer').style.color = 'var(--text)';
+  document.getElementById('mUpperContent').innerHTML = `
+    <div class="modal-row"><span class="modal-label">日卡</span><span class="modal-val">${escapeHtml(d.card)}${rankIconMarkup(d.card)}</span></div>
+    <div class="modal-row"><span class="modal-label">對譜數</span><span class="modal-val">${escapeHtml(d.combo)} 譜</span></div>`;
+  document.getElementById('mLowerBlock').style.display = 'none';
+
+  const reportUrl = `https://docs.google.com/forms/d/e/1FAIpQLSdP6bWGJ6GFkyOZ7dWsqDbiup7KzTyJGxw9Feta-EqCS3pG6w/viewform?usp=pp_url&entry.1527588954=${encodeURIComponent(d.partner)}&entry.1242930374=${encodeURIComponent(d.link)}`;
+
+  document.getElementById('mFooter').innerHTML = modalFooterActions(d.link, folderItem, reportUrl, d.hasVideo);
+  document.getElementById('modalOverlay').classList.add('show');
+}
+
+function closeModal(e) { if (e.target === document.getElementById('modalOverlay')) closeModalDirect(); }
+function closeModalDirect() {
+  document.getElementById('modalOverlay').classList.remove('show');
+  const modalEl = document.getElementById('modal');
+  modalEl.classList.remove('panel-detail', 'endless-detail');
+  modalEl.removeAttribute('data-orbit');
+  modalEl.style.removeProperty('--modal-orbit-color');
+  modalEl.style.removeProperty('--modal-orbit-bg');
+  modalEl.style.removeProperty('--modal-orbit-bg-strong');
+  modalEl.style.removeProperty('--modal-orbit-border');
+  modalEl.style.removeProperty('--modal-orbit-button-text');
+  state.preview.modalPaused = false;
+  state.preview.lastTime = performance.now();
+  setModalViewed(false);
+  document.getElementById('mUpperBlock').classList.remove('modal-config-table-wrap');
+  document.getElementById('mLowerBlock').style.display = '';
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    closeModalDirect();
+    closeInfoModalDirect();
+  }
+});
+
+function scrollToTop() {
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+function scrollToBottom() {
+  window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
+}
+
+function updateScrollButtons() {
+  const topBtn = document.getElementById('backToTopBtn');
+  const bottomBtn = document.getElementById('backToBottomBtn');
+  if (!topBtn || !bottomBtn) return;
+  const viewportH = window.innerHeight;
+  const fullH = document.documentElement.scrollHeight;
+  const maxScroll = fullH - viewportH;
+
+  // top botton and bottom botton setting
+  if (maxScroll <= 0) {
+    topBtn.classList.remove('show');
+    bottomBtn.classList.remove('show');
+    return;
+  }
+
+  const scrollY = window.scrollY;
+  const showTopBtnAfter = 500;
+  topBtn.classList.toggle('show', scrollY > showTopBtnAfter);
+  bottomBtn.classList.toggle('show', (maxScroll - scrollY) > 10);
+}
+
+window.addEventListener('scroll', updateScrollButtons);
+window.addEventListener('resize', () => {
+  updateScrollButtons();
+  updatePrimaryTabSlider();
+});
+if (document.fonts?.ready) {
+  document.fonts.ready.then(updatePrimaryTabSlider).catch(() => {});
+}
+
+bindDelegatedInteractions();
+init();
+updateScrollButtons();
