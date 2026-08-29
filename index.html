@@ -41,41 +41,39 @@
 <div class="section active" id="section-panel">
 <div class="container">
   <!-- Filter Panel -->
-  <div class="filter-panel">
-        <div class="filter-header">
-          <div class="filter-title">✦ 篩選條件</div>
-          <div class="filter-header-actions">
-            <button class="btn-reset btn-reset-compact" onclick="resetFilters()">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 2.6-6.3M3 4v5h5"/></svg>
-              重設
-            </button>
-          </div>
+  <div class="primary-filter-block">
+    <div class="filter-header">
+      <div class="filter-title">✦ 篩選條件</div>
+      <div class="filter-header-actions">
+        <button class="btn-reset btn-reset-compact ui-control ui-control--compact ui-control--utility" onclick="resetFilters()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 2.6-6.3M3 4v5h5"/></svg>
+          重設
+        </button>
+      </div>
     </div>
 
-    <div class="filter-state-stack">
-    <div id="primaryFilterControls" class="primary-filter-controls">
-    <div class="orbit-group">
-      <div class="orbit-label">軌道類型</div>
+    <div class="primary-filter-content">
+      <div class="primary-filter-section">
+        <div class="orbit-label">軌道類型</div>
         <div class="orbit-chips" id="orbitChips">
           <div class="orbit-row-open">
-            <button class="chip" data-orbit="開放" onclick="selectOrbit(this)">開放穩定</button>
-            <button class="chip" data-orbit="波動" onclick="selectOrbit(this)">開放波動</button>
+            <button class="chip ui-pill ui-pill--primary" data-orbit="開放" aria-pressed="false" onclick="selectOrbit(this)">開放穩定</button>
+            <button class="chip ui-pill ui-pill--primary" data-orbit="波動" aria-pressed="false" onclick="selectOrbit(this)">開放波動</button>
           </div>
           <div class="orbit-divider"></div>
           <div class="orbit-grid-directional">
-            <button class="chip" data-orbit="光"   onclick="selectOrbit(this)">光</button>
-            <button class="chip" data-orbit="冰"   onclick="selectOrbit(this)">冰</button>
-            <button class="chip" data-orbit="火"   onclick="selectOrbit(this)">火</button>
-            <button class="chip" data-orbit="能量" onclick="selectOrbit(this)">能量</button>
-            <button class="chip" data-orbit="引力" onclick="selectOrbit(this)">引力</button>
+            <button class="chip ui-pill ui-pill--primary" data-orbit="光" aria-pressed="false" onclick="selectOrbit(this)">光</button>
+            <button class="chip ui-pill ui-pill--primary" data-orbit="冰" aria-pressed="false" onclick="selectOrbit(this)">冰</button>
+            <button class="chip ui-pill ui-pill--primary" data-orbit="火" aria-pressed="false" onclick="selectOrbit(this)">火</button>
+            <button class="chip ui-pill ui-pill--primary" data-orbit="能量" aria-pressed="false" onclick="selectOrbit(this)">能量</button>
+            <button class="chip ui-pill ui-pill--primary" data-orbit="引力" aria-pressed="false" onclick="selectOrbit(this)">引力</button>
           </div>
         </div>
-    </div>
+      </div>
 
-    <div class="filter-fields panel-filter-fields">
-      <div class="layer-suggestion-panel" id="layerSuggestionPanel" aria-live="polite"></div>
-    </div>
-    </div>
+      <div class="primary-filter-section">
+        <div class="layer-suggestion-panel" id="layerSuggestionPanel" aria-live="polite"></div>
+      </div>
     </div>
   </div>
 
@@ -83,7 +81,7 @@
     <div class="results-toolbar">
       <div class="results-info" id="resultsInfo"></div>
       <div class="panel-results-controls is-placeholder" id="panelResultsControls" aria-hidden="true">
-        <button class="advanced-filter-toggle" id="advancedFilterToggle" type="button" aria-expanded="false" aria-controls="advancedFilterPanel" onclick="toggleAdvancedFilters()" disabled>
+        <button class="advanced-filter-toggle ui-control ui-control--compact ui-control--expand" id="advancedFilterToggle" type="button" aria-expanded="false" aria-controls="advancedFilterPanel" onclick="toggleAdvancedFilters()" disabled>
           <span>進階篩選</span>
           <span class="advanced-filter-chevron" id="advancedFilterChevron" aria-hidden="true">⌄</span>
         </button>
@@ -91,12 +89,12 @@
     </div>
     <div class="advanced-filter-panel" id="advancedFilterPanel" hidden>
       <div class="advanced-filter-controls">
-        <label class="video-toggle video-toggle-compact advanced-video-toggle">
-          <input type="checkbox" id="videoOnly" onchange="applyFilters()">
+        <label class="video-toggle video-toggle-compact advanced-video-toggle ui-control ui-control--compact ui-control--toggle">
+          <input type="checkbox" id="videoOnly" onchange="setPanelVideoOnly(this.checked)">
           <span class="video-switch"></span>
           <span>附影片</span>
         </label>
-        <button class="btn-reset btn-reset-compact advanced-filter-reset" type="button" onclick="resetAdvancedFilters()">
+        <button class="btn-reset btn-reset-compact advanced-filter-reset ui-control ui-control--compact ui-control--utility" type="button" onclick="resetAdvancedFilters()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 2.6-6.3M3 4v5h5"/></svg>
           重設
         </button>
@@ -125,45 +123,50 @@
 <div class="container">
 
   <!-- Endless filter panel -->
-  <div class="endless-filter-panel">
-        <div class="filter-header">
-          <div class="filter-title">✦ 篩選條件</div>
-          <div class="filter-header-actions">
-            <button class="btn-reset btn-reset-compact" onclick="resetEndlessFilters()">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 2.6-6.3M3 4v5h5"/></svg>
-              重設
-            </button>
-          </div>
+  <div class="primary-filter-block">
+    <div class="filter-header">
+      <div class="filter-title">✦ 篩選條件</div>
+      <div class="filter-header-actions">
+        <button class="btn-reset btn-reset-compact ui-control ui-control--compact ui-control--utility" onclick="resetEndlessFilters()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 2.6-6.3M3 4v5h5"/></svg>
+          重設
+        </button>
+      </div>
     </div>
-    <div class="filter-fields endless-filter-fields">
-      <div class="filter-group partner-group">
-        <label>搭檔選擇</label>
-        <select class="card-input" id="partnerSelect" onchange="selectPartnerDropdown(this.value)">
-          <option value="">全部搭檔</option>
-          <option value="逐光騎士">沈星回．逐光騎士</option>
-          <option value="光獵">沈星回．光獵</option>
-          <option value="暗蝕國王">沈星回．暗蝕國王</option>
-          <option value="永恆先知">黎深．永恆先知</option>
-          <option value="九黎司命">黎深．九黎司命</option>
-          <option value="終末之神">黎深．終末之神</option>
-          <option value="深海潛行者">祁煜．深海潛行者</option>
-          <option value="潮汐之神">祁煜．潮汐之神</option>
-          <option value="利莫里亞海神">祁煜．利莫里亞海神</option>
-          <option value="赤霄武神">祁煜．赤霄武神</option>
-          <option value="無盡掠奪者">秦徹．無盡掠奪者</option>
-          <option value="深淵主宰">秦徹．深淵主宰</option>
-          <option value="銀翼惡魔">秦徹．銀翼惡魔</option>
-          <option value="遠空執艦官">夏以晝．遠空執艦官</option>
-          <option value="終極兵器X-02">夏以晝．終極兵器X-02</option>
-          <option value="冥羅之主">夏以晝．冥羅之主</option>
-        </select>
-     </div>
-        </div>
+    <div class="primary-filter-content" id="endlessSelector">
+      <div class="primary-filter-section">
+        <div class="orbit-label">角色</div>
+        <div class="endless-character-grid" id="endlessCharacterGrid"></div>
+      </div>
+      <div class="primary-filter-section">
+        <div class="orbit-label">搭檔</div>
+        <div class="endless-partner-grid" id="endlessPartnerGrid"></div>
+        <div class="endless-partner-placeholder primary-filter-placeholder" id="endlessPartnerPlaceholder">請先選擇角色</div>
+      </div>
+    </div>
+  </div>
 
-    <div class="dynamic-filter-panel" id="endlessDynamicFilterPanel">
-      <div class="dynamic-filter-header">
-        <div class="dynamic-filter-title">✦ 配置篩選</div>
-        <button class="btn-reset btn-reset-compact" onclick="clearEndlessDynamicFilters()">清除配置</button>
+  <div class="results-view" id="endlessResultsView">
+    <div class="results-toolbar">
+      <div class="results-info" id="endlessInfo"></div>
+      <div class="endless-results-controls is-placeholder" id="endlessResultsControls" aria-hidden="true">
+        <button class="advanced-filter-toggle ui-control ui-control--compact ui-control--expand" id="endlessAdvancedFilterToggle" type="button" aria-expanded="false" aria-controls="endlessAdvancedFilterPanel" onclick="toggleEndlessAdvancedFilters()" disabled>
+          <span>配置篩選</span>
+          <span class="advanced-filter-chevron" id="endlessAdvancedFilterChevron" aria-hidden="true">⌄</span>
+        </button>
+      </div>
+    </div>
+    <div class="advanced-filter-panel endless-advanced-filter-panel" id="endlessAdvancedFilterPanel" hidden>
+      <div class="advanced-filter-controls">
+        <label class="video-toggle video-toggle-compact advanced-video-toggle ui-control ui-control--compact ui-control--toggle">
+          <input type="checkbox" id="endlessVideoOnly" onchange="setEndlessVideoOnly(this.checked)">
+          <span class="video-switch"></span>
+          <span>附影片</span>
+        </label>
+        <button class="btn-reset btn-reset-compact advanced-filter-reset ui-control ui-control--compact ui-control--utility" onclick="resetEndlessAdvancedFilters()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 2.6-6.3M3 4v5h5"/></svg>
+          重設
+        </button>
       </div>
       <div class="dynamic-filter-grid single-column">
         <div class="dynamic-layer-box">
@@ -171,17 +174,6 @@
         </div>
       </div>
       <div class="dynamic-no-match" id="endlessDynamicNoMatch">找不到完全相符的結果</div>
-    </div>
-  </div>
-
-  <div class="results-view" id="endlessResultsView">
-    <div class="results-toolbar">
-      <div class="results-info" id="endlessInfo"></div>
-      <label class="video-toggle video-toggle-compact results-video-toggle">
-        <input type="checkbox" id="endlessVideoOnly" onchange="applyEndlessFilters()">
-        <span class="video-switch"></span>
-        <span>附影片</span>
-      </label>
     </div>
     <div class="endless-grid" id="endlessGrid"></div>
   </div>

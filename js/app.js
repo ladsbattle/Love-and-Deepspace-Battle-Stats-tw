@@ -2,13 +2,22 @@
 // Parse data
 const LIMITS = { 光:210, 冰:210, 火:240, 能量:180, 引力:180, 金屬:180, 開放:300, 波動:60 };
 const ORBIT_LABEL = { 開放:'開放穩定', 波動:'開放波動', 光:'光', 冰:'冰', 火:'火', 能量:'能量', 引力:'引力', 金屬:'金屬' };
+const ENDLESS_CHARACTER_CATALOG = [
+  { name: '沈星回', theme: '光', visible: true, partners: ['逐光騎士', '光獵', '暗蝕國王'] },
+  { name: '黎深', theme: '冰', visible: true, partners: ['永恆先知', '九黎司命', '終末之神'] },
+  { name: '祁煜', theme: '火', visible: true, partners: ['深海潛行者', '潮汐之神', '利莫里亞海神', '赤霄武神'] },
+  { name: '秦徹', theme: '能量', visible: true, partners: ['無盡掠奪者', '深淵主宰', '銀翼惡魔'] },
+  { name: '夏以晝', theme: '引力', visible: true, partners: ['遠空執艦官', '終極兵器X-02', '冥羅之主'] },
+  { name: '敖尹', theme: '金屬', visible: false, partners: [] }
+];
 
 let DATA = [];
 let ENDLESS_DATA = [];
 let ENDLESS_ALL = [];
 const DYNAMIC_FILTER_CATEGORIES = ['dir', 'card', 'partner'];
-const state = {
-  panel: {
+
+function createPanelFilterState() {
+  return {
     orbit: null,
     results: [],
     layerFilters: { upper: [], lower: [] },
@@ -18,13 +27,25 @@ const state = {
     manualEntryOpen: false,
     manualLayerValue: '',
     advancedFilterOpen: false,
+    videoOnly: false,
     committedOrbit: null,
     committedLayer: null
-  },
-  endless: {
+  };
+}
+
+function createEndlessFilterState() {
+  return {
+    character: null,
     partner: null,
-    card: null
-  },
+    card: null,
+    advancedFilterOpen: false,
+    videoOnly: false
+  };
+}
+
+const state = {
+  panel: createPanelFilterState(),
+  endless: createEndlessFilterState(),
   preview: {
     items: { panel: [], endless: [] },
     autoFrame: null,
@@ -34,7 +55,6 @@ const state = {
 };
 const PANEL_PREVIEW_SPEED = 0.075;
 const CONTENT_FADE_MS = 150;
-const fadeTimers = {};
 const fadeVersions = {};
 let tabFadeTimer = null;
 let activeFolderTab = 'favorites';
@@ -105,11 +125,9 @@ function setSearchControlsDisabled(disabled) {
   document.body.classList.toggle('is-app-loading', disabled);
   document.querySelectorAll(`
     .tab-nav .tab-btn,
-    .filter-panel button,
-    .filter-panel input,
-    .endless-filter-panel button,
-    .endless-filter-panel input,
-    .endless-filter-panel select
+    .primary-filter-block button,
+    .primary-filter-block input,
+    .primary-filter-block select
   `).forEach(el => { el.disabled = disabled; });
   const advancedToggle = document.getElementById('advancedFilterToggle');
   if (advancedToggle) advancedToggle.disabled = disabled;
@@ -297,6 +315,7 @@ async function init() {
   appLoading = true;
   bootLoadFailed = false;
   setSearchControlsDisabled(true);
+  renderLayerSuggestions();
   renderBootProgress();
 
   const updateLastUpdated = async () => {
@@ -337,7 +356,8 @@ async function init() {
 
     appLoading = false;
     setSearchControlsDisabled(false);
-    state.endless.partner = null;
+    resetEndlessFilterState();
+    renderEndlessSelector();
     renderLayerSuggestions();
     applyFilters();
     applyEndlessFilters();
@@ -363,29 +383,73 @@ function commitExactQuery(layer) {
   state.panel.committedLayer = layer;
 }
 
-function selectOrbit(btn) {
-  if (appLoading) return;
+function syncVideoFilterControls() {
+  const panelToggle = document.getElementById('videoOnly');
+  const endlessToggle = document.getElementById('endlessVideoOnly');
+  if (panelToggle) panelToggle.checked = state.panel.videoOnly;
+  if (endlessToggle) endlessToggle.checked = state.endless.videoOnly;
+}
+
+function clearPanelAdvancedState({ collapse = true } = {}) {
+  state.panel.layerFilters = { upper: [], lower: [] };
+  state.panel.dynamicBaseData = [];
+  state.panel.dynamicFilterOrder = 0;
+  state.panel.videoOnly = false;
+  if (collapse) state.panel.advancedFilterOpen = false;
+  syncVideoFilterControls();
+}
+
+function clearPanelLayerSelectionState() {
   state.panel.committedOrbit = null;
   state.panel.committedLayer = null;
+  state.panel.rangeKey = null;
   state.panel.manualEntryOpen = false;
   state.panel.manualLayerValue = '';
+  clearPanelAdvancedState();
+}
+
+function resetPanelFilterState() {
+  Object.assign(state.panel, createPanelFilterState());
+  syncVideoFilterControls();
+}
+
+function clearEndlessAdvancedState({ collapse = true } = {}) {
+  state.endless.card = null;
+  state.endless.videoOnly = false;
+  if (collapse) state.endless.advancedFilterOpen = false;
+  syncVideoFilterControls();
+}
+
+function resetEndlessFilterState() {
+  Object.assign(state.endless, createEndlessFilterState());
+  syncVideoFilterControls();
+}
+
+function setPanelVideoOnly(checked) {
+  if (appLoading) return;
+  state.panel.videoOnly = Boolean(checked);
+  applyFilters();
+}
+
+function setEndlessVideoOnly(checked) {
+  if (appLoading) return;
+  state.endless.videoOnly = Boolean(checked);
+  applyEndlessFilters();
+}
+
+function syncOrbitPillState() {
+  document.querySelectorAll('#orbitChips [data-orbit]').forEach(button => {
+    button.setAttribute('aria-pressed', String(button.dataset.orbit === state.panel.orbit));
+  });
+}
+
+function selectOrbit(btn) {
+  if (appLoading) return;
   const orbit = btn.dataset.orbit;
-  clearAdvancedFilterState();
-  state.panel.rangeKey = null;
-  if (state.panel.orbit === orbit) {
-    state.panel.orbit = null;
-    state.panel.advancedFilterOpen = false;
-    btn.classList.remove('active');
-    btn.setAttribute('aria-pressed', 'false');
-  } else {
-    document.querySelectorAll('#orbitChips .chip').forEach(c => {
-      c.classList.remove('active');
-      c.setAttribute('aria-pressed', 'false');
-    });
-    state.panel.orbit = orbit;
-    btn.classList.add('active');
-    btn.setAttribute('aria-pressed', 'true');
-  }
+  const nextOrbit = state.panel.orbit === orbit ? null : orbit;
+  clearPanelLayerSelectionState();
+  state.panel.orbit = nextOrbit;
+  syncOrbitPillState();
   updatePanelFilterUI();
   applyFilters();
 }
@@ -420,31 +484,38 @@ function getLayerRanges() {
   return [...ranges.values()].sort((a, b) => a.start - b.start);
 }
 
+function layerSuggestionPlaceholderMarkup(message, isEmpty = false) {
+  return `
+    <div class="layer-suggestion-toolbar">
+      <span class="orbit-label">快速選層</span>
+      <span class="layer-suggestion-back is-placeholder ui-control ui-control--navigation" aria-hidden="true">返回區間</span>
+    </div>
+    <div class="layer-suggestion-placeholder${isEmpty ? ' is-empty' : ''}">
+      <span class="layer-suggestion-placeholder-text primary-filter-placeholder">${escapeHtml(message)}</span>
+    </div>
+  `;
+}
+
 function renderLayerSuggestions() {
   const panel = document.getElementById('layerSuggestionPanel');
   if (!panel) return;
   if (appLoading) {
-    panel.classList.remove('show');
-    panel.replaceChildren();
+    panel.innerHTML = layerSuggestionPlaceholderMarkup('請先選擇軌道類型', true);
+    panel.classList.add('show', 'is-loading');
     return;
   }
+  panel.classList.remove('is-loading');
   const ranges = getLayerRanges();
   const activeRange = ranges.find(range => range.key === state.panel.rangeKey) || null;
   const selectedLayer = getExactLayerValue();
-  if (state.panel.rangeKey && !activeRange) state.panel.rangeKey = null;
   const visibleItems = activeRange ? activeRange.layers : ranges;
   const suggestionItems = !activeRange && state.panel.manualEntryOpen ? [] : visibleItems;
 
   if (!state.panel.orbit || visibleItems.length === 0) {
-    panel.innerHTML = `
-      <div class="layer-suggestion-toolbar">
-        <span class="orbit-label">快速選層</span>
-        <span class="layer-suggestion-back is-placeholder" aria-hidden="true">返回區間</span>
-      </div>
-      <div class="layer-suggestion-placeholder${state.panel.orbit ? '' : ' is-empty'}">
-        <span class="layer-suggestion-placeholder-text">${state.panel.orbit ? '此軌道暫無可選層數' : '請先選擇軌道類型'}</span>
-      </div>
-    `;
+    panel.innerHTML = layerSuggestionPlaceholderMarkup(
+      state.panel.orbit ? '此軌道暫無可選層數' : '請先選擇軌道類型',
+      !state.panel.orbit
+    );
     panel.classList.add('show');
     return;
   }
@@ -452,12 +523,12 @@ function renderLayerSuggestions() {
     <div class="layer-manual-controls">
       <div class="layer-manual-entry">
         <input class="layer-manual-input" type="text" inputmode="numeric" pattern="[0-9]*" value="${escapeHtml(state.panel.manualLayerValue)}" placeholder="輸入層數" aria-label="手動輸入層數">
-        <button class="layer-manual-submit" type="button" data-layer-action="manual-submit">查看</button>
+        <button class="layer-manual-submit ui-control ui-control--inline" type="button" data-layer-action="manual-submit">查看</button>
       </div>
-      <button class="layer-manual-return" type="button" data-layer-action="manual-close">返回快速選層</button>
+      <button class="layer-manual-return ui-control ui-control--navigation" type="button" data-layer-action="manual-close">返回快速選層</button>
     </div>
   ` : `
-    <button class="layer-suggestion-chip layer-manual-trigger" type="button" data-layer-action="manual-open">
+    <button class="layer-suggestion-chip layer-manual-trigger ui-pill ui-pill--secondary" type="button" data-layer-action="manual-open">
       <span>＋ 手動輸入</span>
     </button>
   `);
@@ -465,18 +536,18 @@ function renderLayerSuggestions() {
     <div class="layer-suggestion-toolbar">
       <span class="orbit-label">快速選層</span>
       ${activeRange ? `
-        <button class="layer-suggestion-back" type="button" data-layer-action="back" aria-label="返回層數區間">
+        <button class="layer-suggestion-back ui-control ui-control--navigation" type="button" data-layer-action="back" aria-label="返回層數區間">
           返回區間
         </button>
-      ` : '<span class="layer-suggestion-back is-placeholder" aria-hidden="true">返回區間</span>'}
+      ` : '<span class="layer-suggestion-back is-placeholder ui-control ui-control--navigation" aria-hidden="true">返回區間</span>'}
     </div>
     <div class="layer-suggestion-track" aria-label="${activeRange ? '選擇層數' : '選擇層數區間'}">
       ${suggestionItems.map(item => activeRange ? `
-        <button class="layer-suggestion-chip${selectedLayer === item ? ' active' : ''}" type="button" data-layer="${item}" aria-pressed="${selectedLayer === item}">
+        <button class="layer-suggestion-chip ui-pill ui-pill--secondary" type="button" data-layer="${item}" aria-pressed="${selectedLayer === item}">
           <span>${item}</span>
         </button>
       ` : `
-        <button class="layer-suggestion-chip" type="button" data-layer-range="${item.key}">
+        <button class="layer-suggestion-chip ui-pill ui-pill--secondary" type="button" data-layer-range="${item.key}">
           <span>${item.start}–${item.end}</span>
         </button>
       `).join('')}
@@ -500,24 +571,15 @@ function selectLayerRange(rangeKey) {
   const range = getLayerRanges().find(item => item.key === rangeKey);
   if (!range) return;
   blurLayerSuggestionFocus();
-  state.panel.committedOrbit = null;
-  state.panel.committedLayer = null;
-  state.panel.manualEntryOpen = false;
-  state.panel.manualLayerValue = '';
+  clearPanelLayerSelectionState();
   state.panel.rangeKey = range.key;
-  clearAdvancedFilterState();
   renderLayerSuggestions();
   applyFilters();
 }
 
 function backToLayerRanges() {
   blurLayerSuggestionFocus();
-  state.panel.committedOrbit = null;
-  state.panel.committedLayer = null;
-  state.panel.manualEntryOpen = false;
-  state.panel.manualLayerValue = '';
-  state.panel.rangeKey = null;
-  clearAdvancedFilterState();
+  clearPanelLayerSelectionState();
   renderLayerSuggestions();
   applyFilters();
 }
@@ -527,7 +589,7 @@ function selectSuggestedLayer(layer) {
   blurLayerSuggestionFocus();
   state.panel.manualEntryOpen = false;
   state.panel.manualLayerValue = '';
-  clearAdvancedFilterState();
+  clearPanelAdvancedState();
   commitExactQuery(layer);
   applyFilters();
   renderLayerSuggestions();
@@ -579,7 +641,7 @@ function submitManualLayerEntry() {
   }
 
   blurLayerSuggestionFocus();
-  clearAdvancedFilterState();
+  clearPanelAdvancedState();
   state.panel.rangeKey = null;
   state.panel.manualEntryOpen = true;
   state.panel.manualLayerValue = String(layer);
@@ -1152,7 +1214,7 @@ function renderDynamicFilterSide(side, optionsByType) {
       );
       const compatible = active || (!hasActiveSibling && isDynamicOptionCompatible(side, option));
       return `
-        <button class="dynamic-chip ${active ? 'active' : ''} ${compatible ? '' : 'is-unavailable'}"
+        <button class="dynamic-chip ui-pill ui-pill--filter ${compatible ? '' : 'is-unavailable'}"
           data-side="${side}"
           data-type="${option.type}"
           data-value="${escapeHtml(option.value)}"
@@ -1171,8 +1233,6 @@ function renderDynamicFilters(baseData, layerNum) {
   const shouldShow = state.panel.orbit && layerNum !== null;
   panel.classList.toggle('show', shouldShow);
   if (!shouldShow) {
-    state.panel.layerFilters = { upper: [], lower: [] };
-    state.panel.dynamicBaseData = [];
     if (noMatch) noMatch.classList.remove('show');
     return;
   }
@@ -1181,14 +1241,28 @@ function renderDynamicFilters(baseData, layerNum) {
   renderDynamicFilterSide('lower', collectLayerOptions(baseData, 'lower'));
 }
 
-function updateAdvancedFilterControl() {
+function getPanelAdvancedBaseData() {
+  const layerNum = getExactLayerValue();
+  return layerNum === null ? [] : getBasePanelData(layerNum, false);
+}
+
+function canUsePanelAdvancedFilters(baseData = getPanelAdvancedBaseData()) {
+  return getExactLayerValue() !== null && baseData.length > 1;
+}
+
+function hasPanelAdvancedState() {
+  return state.panel.advancedFilterOpen
+    || state.panel.videoOnly
+    || state.panel.layerFilters.upper.length > 0
+    || state.panel.layerFilters.lower.length > 0;
+}
+
+function updateAdvancedFilterControl(shouldShowAdvanced = canUsePanelAdvancedFilters()) {
   const panel = document.getElementById('advancedFilterPanel');
   const controls = document.getElementById('panelResultsControls');
   const toggle = document.getElementById('advancedFilterToggle');
   const chevron = document.getElementById('advancedFilterChevron');
-  const shouldShowAdvanced = getExactLayerValue() !== null;
 
-  if (!shouldShowAdvanced) state.panel.advancedFilterOpen = false;
   if (controls) {
     controls.hidden = false;
     controls.classList.toggle('is-placeholder', !shouldShowAdvanced);
@@ -1198,26 +1272,20 @@ function updateAdvancedFilterControl() {
   if (toggle) {
     toggle.hidden = false;
     toggle.disabled = !shouldShowAdvanced;
-    toggle.setAttribute('aria-expanded', String(state.panel.advancedFilterOpen));
+    toggle.setAttribute('aria-expanded', String(shouldShowAdvanced && state.panel.advancedFilterOpen));
   }
-  if (chevron) chevron.textContent = state.panel.advancedFilterOpen ? '⌃' : '⌄';
+  if (chevron) chevron.textContent = shouldShowAdvanced && state.panel.advancedFilterOpen ? '⌃' : '⌄';
 }
 
 function toggleAdvancedFilters() {
-  if (appLoading || getExactLayerValue() === null) return;
+  if (appLoading || !canUsePanelAdvancedFilters()) return;
   state.panel.advancedFilterOpen = !state.panel.advancedFilterOpen;
   updateAdvancedFilterControl();
 }
 
-function clearAdvancedFilterState() {
-  state.panel.layerFilters = { upper: [], lower: [] };
-  const videoOnly = document.getElementById('videoOnly');
-  if (videoOnly) videoOnly.checked = false;
-}
-
 function resetAdvancedFilters() {
-  if (appLoading || getExactLayerValue() === null) return;
-  clearAdvancedFilterState();
+  if (appLoading || !canUsePanelAdvancedFilters()) return;
+  clearPanelAdvancedState({ collapse: false });
   applyFilters();
 }
 
@@ -1230,18 +1298,20 @@ function matchesLayerFilters(d, side) {
 function applyFilters() {
   if (appLoading) return;
   const layerNum = getExactLayerValue();
+  const advancedBaseData = layerNum === null ? [] : getBasePanelData(layerNum, false);
+  const shouldShowAdvanced = canUsePanelAdvancedFilters(advancedBaseData);
+  if (!shouldShowAdvanced && hasPanelAdvancedState()) clearPanelAdvancedState();
   const activeRange = layerNum === null && state.panel.rangeKey
     ? getLayerRanges().find(range => range.key === state.panel.rangeKey) || null
     : null;
-  const videoOnly = document.getElementById('videoOnly').checked;
+  const videoOnly = state.panel.videoOnly;
   const shouldSearch = Boolean(state.panel.orbit || state.panel.rangeKey || videoOnly);
   if (!shouldSearch) {
-    state.panel.layerFilters = { upper: [], lower: [] };
     state.panel.results = [...DATA];
     const noMatch = document.getElementById('dynamicNoMatch');
     if (noMatch) noMatch.classList.remove('show');
     renderDynamicFilters([], null);
-    updateAdvancedFilterControl();
+    updateAdvancedFilterControl(shouldShowAdvanced);
     renderCards();
     return;
   }
@@ -1251,26 +1321,15 @@ function applyFilters() {
   const noMatch = document.getElementById('dynamicNoMatch');
   const hasSelectedDynamicFilters = state.panel.layerFilters.upper.length > 0 || state.panel.layerFilters.lower.length > 0;
   if (noMatch) noMatch.classList.toggle('show', hasSelectedDynamicFilters && state.panel.results.length === 0);
-  updateAdvancedFilterControl();
+  updateAdvancedFilterControl(shouldShowAdvanced);
   renderCards();
 }
 
 function resetFilters() {
   if (appLoading) return;
-  state.panel.committedOrbit = null;
-  state.panel.committedLayer = null;
-  state.panel.orbit = null;
-  state.panel.layerFilters = { upper: [], lower: [] };
-  state.panel.rangeKey = null;
-  state.panel.manualEntryOpen = false;
-  state.panel.manualLayerValue = '';
-  state.panel.advancedFilterOpen = false;
-  document.querySelectorAll('#orbitChips .chip').forEach(c => {
-    c.classList.remove('active');
-    c.setAttribute('aria-pressed', 'false');
-  });
+  resetPanelFilterState();
+  syncOrbitPillState();
   updatePanelFilterUI();
-  document.getElementById('videoOnly').checked = false;
   applyFilters();
 }
 
@@ -1402,9 +1461,17 @@ function bindDelegatedInteractions() {
     if (button) toggleDynamicFilter(button.dataset.side, button.dataset.type, button.dataset.value);
   });
 
-  document.getElementById('endlessDynamicFilterPanel')?.addEventListener('click', event => {
+  document.getElementById('endlessAdvancedFilterPanel')?.addEventListener('click', event => {
     const button = event.target.closest('.dynamic-chip[data-endless-card]');
     if (button) toggleEndlessCardFilter(button.dataset.endlessCard);
+  });
+
+  document.getElementById('endlessSelector')?.addEventListener('click', event => {
+    const characterButton = event.target.closest('[data-endless-character]');
+    if (characterButton) return selectEndlessCharacter(characterButton.dataset.endlessCharacter);
+
+    const partnerButton = event.target.closest('[data-endless-partner]');
+    if (partnerButton) selectEndlessPartner(partnerButton.dataset.endlessPartner);
   });
 
   const handleResultActivation = event => {
@@ -1424,11 +1491,10 @@ function bindDelegatedInteractions() {
 }
 
 function hasPanelFilters() {
-  const videoOnly = document.getElementById('videoOnly');
   return Boolean(
     state.panel.orbit ||
     state.panel.rangeKey ||
-    (videoOnly && videoOnly.checked) ||
+    state.panel.videoOnly ||
     state.panel.layerFilters.upper.length > 0 ||
     state.panel.layerFilters.lower.length > 0
   );
@@ -1798,7 +1864,7 @@ function openPanelDetail(d, recordHistory = true) {
 function restartActivePreview(tab) {
   if (tab === 'panel' && !hasPanelFilters()) {
     setupPreviewScroll(PREVIEW_ADAPTERS.panel.sectionSelector, previewModule.get('panel').length);
-  } else if (tab === 'endless' && !state.endless.partner) {
+  } else if (tab === 'endless' && !state.endless.character && !state.endless.partner) {
     setupPreviewScroll(PREVIEW_ADAPTERS.endless.sectionSelector, previewModule.get('endless').length);
   } else {
     stopPreviewAutoScroll();
@@ -1848,10 +1914,61 @@ function switchTab(tab, btn) {
   }, CONTENT_FADE_MS);
 }
 
-function selectPartnerDropdown(value) {
+function getEndlessCharacter(name = state.endless.character) {
+  return ENDLESS_CHARACTER_CATALOG.find(character => character.visible && character.name === name) || null;
+}
+
+function renderEndlessSelector() {
+  const characterGrid = document.getElementById('endlessCharacterGrid');
+  const partnerGrid = document.getElementById('endlessPartnerGrid');
+  const placeholder = document.getElementById('endlessPartnerPlaceholder');
+  if (!characterGrid || !partnerGrid || !placeholder) return;
+
+  characterGrid.innerHTML = ENDLESS_CHARACTER_CATALOG
+    .filter(character => character.visible)
+    .map(character => `
+      <button class="endless-character-button ui-pill ui-pill--primary"
+        data-endless-character="${escapeHtml(character.name)}"
+        data-theme="${escapeHtml(character.theme)}"
+        aria-pressed="${state.endless.character === character.name}">
+        ${escapeHtml(character.name)}
+      </button>
+    `).join('');
+
+  const selectedCharacter = getEndlessCharacter();
+  placeholder.hidden = Boolean(selectedCharacter);
+  partnerGrid.classList.toggle('show', Boolean(selectedCharacter));
+  partnerGrid.innerHTML = selectedCharacter
+    ? selectedCharacter.partners.map(partner => `
+        <button class="endless-partner-button"
+          data-endless-partner="${escapeHtml(partner)}"
+          data-theme="${escapeHtml(selectedCharacter.theme)}"
+          aria-pressed="${state.endless.partner === partner}">
+          <img src="assets/companions/${encodeURIComponent(partner)}.png" alt="" loading="lazy">
+          <span>${escapeHtml(partner)}</span>
+        </button>
+      `).join('')
+    : '';
+}
+
+function selectEndlessCharacter(characterName) {
   if (appLoading) return;
-  state.endless.partner = value || null;
-  state.endless.card = null;
+  const character = getEndlessCharacter(characterName);
+  if (!character) return;
+  state.endless.character = character.name;
+  state.endless.partner = null;
+  clearEndlessAdvancedState();
+  renderEndlessSelector();
+  applyEndlessFilters();
+}
+
+function selectEndlessPartner(partner) {
+  if (appLoading) return;
+  const character = getEndlessCharacter();
+  if (!character?.partners.includes(partner)) return;
+  state.endless.partner = state.endless.partner === partner ? null : partner;
+  clearEndlessAdvancedState();
+  renderEndlessSelector();
   applyEndlessFilters();
 }
 
@@ -1861,15 +1978,42 @@ function collectEndlessCardOptions(data) {
   return sortCardsBySetAndRank([...cardMap.values()]);
 }
 
-function renderEndlessDynamicFilters(baseData) {
-  const panel = document.getElementById('endlessDynamicFilterPanel');
+function getEndlessAdvancedBaseData() {
+  const selectedCharacter = getEndlessCharacter();
+  return ENDLESS_ALL.filter(d => {
+    if (selectedCharacter && !selectedCharacter.partners.includes(d.partner)) return false;
+    if (state.endless.partner && d.partner !== state.endless.partner) return false;
+    return true;
+  });
+}
+
+function canUseEndlessAdvancedFilters(baseData = getEndlessAdvancedBaseData()) {
+  return Boolean(state.endless.partner) && baseData.length > 1;
+}
+
+function hasEndlessAdvancedState() {
+  return state.endless.advancedFilterOpen || state.endless.videoOnly || Boolean(state.endless.card);
+}
+
+function renderEndlessDynamicFilters(baseData, shouldShow = canUseEndlessAdvancedFilters()) {
+  const panel = document.getElementById('endlessAdvancedFilterPanel');
+  const controls = document.getElementById('endlessResultsControls');
+  const toggle = document.getElementById('endlessAdvancedFilterToggle');
+  const chevron = document.getElementById('endlessAdvancedFilterChevron');
   const chips = document.getElementById('endlessCardChips');
   const noMatch = document.getElementById('endlessDynamicNoMatch');
-  if (!panel || !chips) return;
-  const shouldShow = Boolean(state.endless.partner);
-  panel.classList.toggle('show', shouldShow);
+  if (!panel || !toggle || !chips) return;
+  if (controls) {
+    controls.hidden = false;
+    controls.classList.toggle('is-placeholder', !shouldShow);
+    controls.setAttribute('aria-hidden', String(!shouldShow));
+  }
+  toggle.hidden = false;
+  toggle.disabled = !shouldShow;
+  toggle.setAttribute('aria-expanded', String(shouldShow && state.endless.advancedFilterOpen));
+  panel.hidden = !shouldShow || !state.endless.advancedFilterOpen;
+  if (chevron) chevron.textContent = state.endless.advancedFilterOpen ? '⌃' : '⌄';
   if (!shouldShow) {
-    state.endless.card = null;
     if (noMatch) noMatch.classList.remove('show');
     return;
   }
@@ -1880,7 +2024,7 @@ function renderEndlessDynamicFilters(baseData) {
     return;
   }
   chips.innerHTML = options.map(option => `
-    <button class="dynamic-chip ${state.endless.card === option.value ? 'active' : ''}"
+    <button class="dynamic-chip ui-pill ui-pill--filter"
       data-value="${escapeHtml(option.value)}"
       data-endless-card="${escapeHtml(option.value)}"
       aria-pressed="${state.endless.card === option.value}">
@@ -1889,27 +2033,33 @@ function renderEndlessDynamicFilters(baseData) {
   `).join('');
 }
 
+function toggleEndlessAdvancedFilters() {
+  if (appLoading || !canUseEndlessAdvancedFilters()) return;
+  state.endless.advancedFilterOpen = !state.endless.advancedFilterOpen;
+  applyEndlessFilters();
+}
+
 function toggleEndlessCardFilter(value) {
   if (appLoading) return;
   state.endless.card = state.endless.card === value ? null : value;
   applyEndlessFilters();
 }
 
-function clearEndlessDynamicFilters() {
+function resetEndlessAdvancedFilters() {
   if (appLoading) return;
-  state.endless.card = null;
+  clearEndlessAdvancedState({ collapse: false });
   applyEndlessFilters();
 }
 
 function applyEndlessFilters() {
   if (appLoading) return;
-  const videoOnly = document.getElementById('endlessVideoOnly').checked;
-  const baseData = ENDLESS_ALL.filter(d => {
-    if (state.endless.partner && d.partner !== state.endless.partner) return false;
-    if (videoOnly && !d.hasVideo) return false;
-    return true;
-  });
-  renderEndlessDynamicFilters(baseData);
+  const advancedBaseData = getEndlessAdvancedBaseData();
+  const shouldShowAdvanced = canUseEndlessAdvancedFilters(advancedBaseData);
+  if (!shouldShowAdvanced && hasEndlessAdvancedState()) clearEndlessAdvancedState();
+  const baseData = state.endless.videoOnly
+    ? advancedBaseData.filter(d => d.hasVideo)
+    : advancedBaseData;
+  renderEndlessDynamicFilters(baseData, shouldShowAdvanced);
   ENDLESS_DATA = baseData.filter(d => !state.endless.card || d.card === state.endless.card);
   const noMatch = document.getElementById('endlessDynamicNoMatch');
   if (noMatch) noMatch.classList.toggle('show', Boolean(state.endless.card) && ENDLESS_DATA.length === 0);
@@ -1918,13 +2068,9 @@ function applyEndlessFilters() {
 
 function resetEndlessFilters() {
   if (appLoading) return;
-  state.endless.partner = null;
-  state.endless.card = null;
-  document.getElementById('partnerSelect').value = '';
-  document.getElementById('endlessVideoOnly').checked = false;
-  ENDLESS_DATA = [...ENDLESS_ALL];
-  renderEndlessDynamicFilters(ENDLESS_DATA);
-  renderEndless();
+  resetEndlessFilterState();
+  renderEndlessSelector();
+  applyEndlessFilters();
 }
 
 function fmtScore(s) {
@@ -1970,7 +2116,7 @@ function endlessCardMarkup(d, { resultIndex = null, previewType = '', previewInd
 
 function renderEndless() {
   const resultsView = document.getElementById('endlessResultsView');
-  const hasFixedResults = Boolean(state.endless.partner);
+  const hasFixedResults = Boolean(state.endless.character || state.endless.partner);
   const dataSnapshot = [...ENDLESS_DATA];
   const infoText = hasFixedResults
     ? `共找到 <span>${dataSnapshot.length}</span> 筆結果`
