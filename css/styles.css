@@ -2895,6 +2895,19 @@ body.is-app-loading .primary-filter-block select {
     flex-direction: row;
     gap: 0.55rem;
   }
+  #endlessResultsView .results-toolbar {
+    align-items: center;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 0.55rem;
+  }
+  #endlessResultsView .results-info {
+    flex: 0 1 auto;
+    white-space: nowrap;
+  }
+  #endlessResultsView .endless-results-controls {
+    flex: 0 0 auto;
+  }
   .dynamic-filter-grid {
     grid-template-columns: 1fr;
     gap: 0.75rem;
