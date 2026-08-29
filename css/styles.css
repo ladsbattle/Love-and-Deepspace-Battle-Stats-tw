@@ -905,6 +905,16 @@ header {
   letter-spacing: 0.05em;
 }
 .results-info span { color: var(--accent); }
+.boot-load-error {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  color: #f8caca;
+}
+.boot-load-error .ui-control {
+  color: var(--control-text);
+}
 .advanced-filter-toggle {
   display: inline-flex;
   align-items: center;

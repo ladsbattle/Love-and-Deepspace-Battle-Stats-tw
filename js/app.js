@@ -2,6 +2,12 @@
 // Parse data
 const LIMITS = { 光:210, 冰:210, 火:240, 能量:180, 引力:180, 金屬:180, 開放:300, 波動:60 };
 const ORBIT_LABEL = { 開放:'開放穩定', 波動:'開放波動', 光:'光', 冰:'冰', 火:'火', 能量:'能量', 引力:'引力', 金屬:'金屬' };
+const PANEL_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTfNvGSQbmwwXodVzmhuZfOAGIIE634hWTA6V1CTaQlF272v3VRJ5t_F7OfSKPH0qbBQbUSvLlQnw3x/pub?output=csv';
+const ENDLESS_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTfNvGSQbmwwXodVzmhuZfOAGIIE634hWTA6V1CTaQlF272v3VRJ5t_F7OfSKPH0qbBQbUSvLlQnw3x/pub?gid=1577067344&single=true&output=csv';
+const CHANGELOG_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTfNvGSQbmwwXodVzmhuZfOAGIIE634hWTA6V1CTaQlF272v3VRJ5t_F7OfSKPH0qbBQbUSvLlQnw3x/pub?gid=1820828638&single=true&output=csv';
+const CSV_REQUEST_TIMEOUT_MS = 10000;
+const IMAGE_PRELOAD_TIMEOUT_MS = 8000;
+const MAIN_DATA_RETRIES = 1;
 const ENDLESS_CHARACTER_CATALOG = [
   { name: '沈星回', theme: '光', visible: true, partners: ['逐光騎士', '光獵', '暗蝕國王'] },
   { name: '黎深', theme: '冰', visible: true, partners: ['永恆先知', '九黎司命', '終末之神'] },
@@ -64,7 +70,7 @@ let changelogLoaded = false;
 let changelogLoadError = false;
 let appLoading = true;
 let bootLoadFailed = false;
-const BOOT_CSV_TOTAL = 3;
+const BOOT_CSV_TOTAL = 2;
 const bootProgress = {
   csvDone: 0,
   csvTotal: BOOT_CSV_TOTAL,
@@ -140,12 +146,43 @@ function markCsvLoaded() {
   renderBootProgress();
 }
 
-async function fetchCsvResource(url, parser, onSuccess) {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`CSV request failed: ${res.status}`);
-  const text = await res.text();
-  onSuccess(parser(text));
-  markCsvLoaded();
+async function fetchWithTimeout(url, timeoutMs = CSV_REQUEST_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { signal: controller.signal });
+  } catch (error) {
+    if (controller.signal.aborted) {
+      throw new Error(`Request timed out after ${timeoutMs}ms`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+async function retryAsync(task, retries = 0) {
+  let lastError;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await task();
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError;
+}
+
+async function fetchCsvResource(url, parser, onSuccess, options = {}) {
+  const timeoutMs = options.timeoutMs ?? CSV_REQUEST_TIMEOUT_MS;
+  const retries = options.retries ?? 0;
+  const rows = await retryAsync(async () => {
+    const res = await fetchWithTimeout(url, timeoutMs);
+    if (!res.ok) throw new Error(`CSV request failed: ${res.status}`);
+    return parser(await res.text());
+  }, retries);
+  if (typeof onSuccess === 'function') onSuccess(rows);
+  return rows;
 }
 
 function rankImageSrcFromCard(card) {
@@ -181,11 +218,21 @@ function collectInitialImageUrls() {
   return [...urls];
 }
 
-function preloadImage(url) {
+function preloadImage(url, timeoutMs = IMAGE_PRELOAD_TIMEOUT_MS) {
   return new Promise(resolve => {
     const image = new Image();
-    image.onload = () => resolve({ url, ok: true });
-    image.onerror = () => resolve({ url, ok: false });
+    let settled = false;
+    const finish = (ok, timedOut = false) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeoutId);
+      image.onload = null;
+      image.onerror = null;
+      resolve({ url, ok, timedOut });
+    };
+    const timeoutId = setTimeout(() => finish(false, true), timeoutMs);
+    image.onload = () => finish(true);
+    image.onerror = () => finish(false);
     image.src = url;
   });
 }
@@ -213,7 +260,11 @@ function showBootLoadError() {
   appLoading = true;
   setSearchControlsDisabled(true);
   stopPreviewAutoScroll();
-  const message = '⚠ 資料載入失敗，請重新整理頁面';
+  const message = `
+    <span class="boot-load-error" role="alert">
+      <span>⚠ 資料載入失敗</span>
+      <button class="ui-control ui-control--compact ui-control--utility" type="button" onclick="retryBootDataLoad()">重新載入資料</button>
+    </span>`;
   document.getElementById('resultsInfo').innerHTML = message;
   document.getElementById('endlessInfo').innerHTML = message;
   document.getElementById('cardsGrid').replaceChildren();
@@ -302,54 +353,55 @@ function parseChangelogCSV(text) {
   }).filter(item => item.date && item.note);
 }
 
-async function init() {
-  loadLocalFolder();
-  renderFolderPanel();
-  updatePrimaryTabSlider();
-  const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTfNvGSQbmwwXodVzmhuZfOAGIIE634hWTA6V1CTaQlF272v3VRJ5t_F7OfSKPH0qbBQbUSvLlQnw3x/pub?output=csv';
-  const ENDLESS_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTfNvGSQbmwwXodVzmhuZfOAGIIE634hWTA6V1CTaQlF272v3VRJ5t_F7OfSKPH0qbBQbUSvLlQnw3x/pub?gid=1577067344&single=true&output=csv';
-  const CHANGELOG_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTfNvGSQbmwwXodVzmhuZfOAGIIE634hWTA6V1CTaQlF272v3VRJ5t_F7OfSKPH0qbBQbUSvLlQnw3x/pub?gid=1820828638&single=true&output=csv';
-  const SHEET_FILE_ID = '19RqMAlpyi1g9pXyJ1azm45pxfjvxRqxJOUCdsQpHKDo';
-  const DRIVE_API_KEY = 'AIzaSyAzbzHaKnhio4gomMkPm-lppgkDpBj6TIw';
+function resetBootProgress() {
+  bootProgress.csvDone = 0;
+  bootProgress.csvTotal = BOOT_CSV_TOTAL;
+  bootProgress.imageDone = 0;
+  bootProgress.imageTotal = null;
+  bootProgress.stage = '資料載入中';
+}
 
+async function loadChangelogData() {
+  changelogLoaded = false;
+  changelogLoadError = false;
+  try {
+    CHANGELOG_DATA = await fetchCsvResource(CHANGELOG_CSV_URL, parseChangelogCSV, null, {
+      timeoutMs: CSV_REQUEST_TIMEOUT_MS
+    });
+    changelogLoaded = true;
+  } catch (error) {
+    changelogLoadError = true;
+    console.error('Maintenance history fetch failed:', error);
+  }
+  renderVersionHistory();
+}
+
+async function loadPrimaryApplicationData() {
   appLoading = true;
   bootLoadFailed = false;
+  resetBootProgress();
   setSearchControlsDisabled(true);
   renderLayerSuggestions();
   renderBootProgress();
 
-  const updateLastUpdated = async () => {
-    const metaUrl = `https://www.googleapis.com/drive/v3/files/${SHEET_FILE_ID}?fields=modifiedTime&key=${DRIVE_API_KEY}`;
-    const metaRes = await fetch(metaUrl);
-    const meta = await metaRes.json();
-    const lastUpdatedEl = document.getElementById('lastUpdated');
-    if (meta.modifiedTime && lastUpdatedEl) {
-      const formatted = formatTaipeiDateTime(meta.modifiedTime);
-      lastUpdatedEl.textContent = `Last Updated: ${formatted} (UTC+8)`;
-    }
-  };
-  updateLastUpdated().catch(err => console.error('Last Updated fetch failed:', err));
-
   try {
-    const csvTasks = [
-      fetchCsvResource(CSV_URL, parseCSV, rows => { DATA = rows; }),
-      fetchCsvResource(ENDLESS_CSV_URL, parseEndlessCSV, rows => {
-        ENDLESS_ALL = rows;
-        ENDLESS_DATA = [...ENDLESS_ALL];
-      }),
-      fetchCsvResource(CHANGELOG_CSV_URL, parseChangelogCSV, rows => {
-        CHANGELOG_DATA = rows;
-        changelogLoaded = true;
-        renderVersionHistory();
-      }).catch(err => {
-        changelogLoadError = true;
+    const loadPrimaryCsv = (url, parser) => (
+      fetchCsvResource(url, parser, null, {
+        timeoutMs: CSV_REQUEST_TIMEOUT_MS,
+        retries: MAIN_DATA_RETRIES
+      }).then(rows => {
         markCsvLoaded();
-        renderVersionHistory();
-        console.error('Maintenance history fetch failed:', err);
+        return rows;
       })
-    ];
+    );
 
-    await Promise.all(csvTasks);
+    const [panelRows, endlessRows] = await Promise.all([
+      loadPrimaryCsv(PANEL_CSV_URL, parseCSV),
+      loadPrimaryCsv(ENDLESS_CSV_URL, parseEndlessCSV)
+    ]);
+    DATA = panelRows;
+    ENDLESS_ALL = endlessRows;
+    ENDLESS_DATA = [...ENDLESS_ALL];
     previewModule.prime('panel');
     previewModule.prime('endless');
     await preloadInitialImages();
@@ -365,6 +417,34 @@ async function init() {
     showBootLoadError();
     console.error(err);
   }
+}
+
+function retryBootDataLoad() {
+  if (!bootLoadFailed) return;
+  loadPrimaryApplicationData();
+}
+
+async function init() {
+  loadLocalFolder();
+  renderFolderPanel();
+  updatePrimaryTabSlider();
+  const SHEET_FILE_ID = '19RqMAlpyi1g9pXyJ1azm45pxfjvxRqxJOUCdsQpHKDo';
+  const DRIVE_API_KEY = 'AIzaSyAzbzHaKnhio4gomMkPm-lppgkDpBj6TIw';
+
+  const updateLastUpdated = async () => {
+    const metaUrl = `https://www.googleapis.com/drive/v3/files/${SHEET_FILE_ID}?fields=modifiedTime&key=${DRIVE_API_KEY}`;
+    const metaRes = await fetchWithTimeout(metaUrl, CSV_REQUEST_TIMEOUT_MS);
+    const meta = await metaRes.json();
+    const lastUpdatedEl = document.getElementById('lastUpdated');
+    if (meta.modifiedTime && lastUpdatedEl) {
+      const formatted = formatTaipeiDateTime(meta.modifiedTime);
+      lastUpdatedEl.textContent = `Last Updated: ${formatted} (UTC+8)`;
+    }
+  };
+
+  updateLastUpdated().catch(err => console.error('Last Updated fetch failed:', err));
+  loadChangelogData();
+  await loadPrimaryApplicationData();
 }
 
 function getExactLayerValue() {
