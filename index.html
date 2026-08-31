@@ -18,7 +18,7 @@
 <meta property="og:url" content="https://ladsbattle.github.io/Love-and-Deepspace-Battle-Stats-tw/">
 <meta name="twitter:card" content="summary">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600&family=Noto+Sans+TC:wght@300;400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css">
+<link rel="stylesheet" href="css/styles.css?v=20260831-mobile-filter-3">
 </head>
 <body>
 
@@ -33,8 +33,8 @@
 
 <!-- Tab navigation -->
 <div class="tab-nav" data-active="panel">
-  <button class="tab-btn active" onclick="switchTab('panel', this)">軌道</button>
-  <button class="tab-btn" onclick="switchTab('endless', this)">無盡挑戰</button>
+  <button class="tab-btn active" data-search-tab="panel" onclick="switchTab('panel', this)">軌道</button>
+  <button class="tab-btn" data-search-tab="endless" onclick="switchTab('endless', this)">無盡挑戰</button>
 </div>
 
 <!-- Panel section -->
@@ -222,7 +222,7 @@
       </section>
       <section class="info-section info-panel" id="infoPanelIntro" data-panel="intro" role="tabpanel" hidden>
         <div class="info-section-desc">
-          <p>本資料庫為LINE匿名社群<span class="info-highlight">戀與深空戰鬥討論群</span>所有，目的為收錄並整理Facebook社團<span class="info-highlight">戀與深空戰鬥討論群_臉書面板分享專區</span>的開放穩定軌道、開放波動軌道、定向軌道及無盡挑戰通關資料，提供各位玩家便捷的查詢管道；我們相信每一份通關資料都有其參考價值，也珍視群友每一次的通關心得分享，若您有意願分享通關資料，歡迎加入分享專區。</p>
+          <p>本資料庫為LINE匿名社群<span class="info-highlight">戀與深空戰鬥討論群</span>所有，目的為收錄並整理Facebook社團<span class="info-highlight">戀與深空戰鬥討論群_臉書面板分享專區</span>及其前身<span class="info-highlight">戀與深空戰鬥討論群</span>YouTube頻道的開放穩定軌道、開放波動軌道、定向軌道及無盡挑戰通關資料，提供各位玩家便捷的查詢管道；我們相信每一份通關資料都有其參考價值，也珍視群友每一次的通關心得分享，若您有意願分享通關資料，歡迎加入分享專區。</p>
           <div class="info-link-actions">
             <a class="info-link-button" href="https://www.facebook.com/share/g/1EHo4wBBby/" target="_blank" rel="noopener">
               <svg class="info-link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -253,14 +253,26 @@
   </div>
 </div>
 
-<script src="js/app.js"></script>
+<div class="search-link-status" id="searchLinkStatus" role="status" aria-live="polite" hidden></div>
+<dialog class="modal info-modal contributors-modal" id="contributorsDialog" aria-labelledby="contributorsTitle" aria-describedby="contributorsIntro">
+  <button class="modal-close" type="button" data-contributors-action="close" aria-label="關閉感謝名單">✕</button>
+  <div class="info-modal-header">
+    <h2 class="info-modal-title" id="contributorsTitle" tabindex="-1" autofocus>特別感謝</h2>
+  </div>
+  <p id="contributorsIntro">感謝每一位為面板資料庫做出貢獻的玩家，以下名單僅依照英文字母及中文筆畫排序，順序並不代表貢獻多寡或重要性。</p>
+  <div class="info-content contributors-scroll" role="region" aria-label="貢獻者名單" tabindex="0">
+    <div id="contributorsContent" aria-live="polite"></div>
+    <p class="contributors-contact">本資料庫的貢獻者眾多，且僅展示公開發文者之大名（即不列出匿名發文者，以保護其資訊），若您發現名單有錯誤或遺漏，或者不希望自己的大名展示於其中，請不吝聯繫網站製作者<a class="contributors-maker" href="https://www.facebook.com/groups/1655830235133299/user/61579601102041" target="_blank" rel="noopener noreferrer">Ting Ting Wang</a>進行處理，感謝您的支持。</p>
+  </div>
+</dialog>
+<script src="js/app.js?v=20260831-release-1"></script>
 
 <footer class="site-footer">
   This website belongs to 
   <a href="https://line.me/ti/g2/gw9Ds6tjgN1mPRRCKbc7pLofd4Wzd1MJoR71eQ" target="_blank" rel="noopener">
     戀與深空戰鬥討論群
   </a>
-  <span class="site-footer-credit">, created by <a href="https://www.facebook.com/groups/1655830235133299/user/61579601102041" target="_blank" rel="noopener">Ting Ting Wang</a></span>
+  <span aria-hidden="true"> · </span><button class="footer-contributors" type="button" data-contributors-action="open" aria-haspopup="dialog" aria-controls="contributorsDialog">Contributors</button>
   <div id="lastUpdated"></div>
 </footer>
 

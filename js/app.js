@@ -5,6 +5,11 @@ const ORBIT_LABEL = { 開放:'開放穩定', 波動:'開放波動', 光:'光', �
 const PANEL_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTfNvGSQbmwwXodVzmhuZfOAGIIE634hWTA6V1CTaQlF272v3VRJ5t_F7OfSKPH0qbBQbUSvLlQnw3x/pub?output=csv';
 const ENDLESS_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTfNvGSQbmwwXodVzmhuZfOAGIIE634hWTA6V1CTaQlF272v3VRJ5t_F7OfSKPH0qbBQbUSvLlQnw3x/pub?gid=1577067344&single=true&output=csv';
 const CHANGELOG_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTfNvGSQbmwwXodVzmhuZfOAGIIE634hWTA6V1CTaQlF272v3VRJ5t_F7OfSKPH0qbBQbUSvLlQnw3x/pub?gid=1820828638&single=true&output=csv';
+const CONTRIBUTORS_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTfNvGSQbmwwXodVzmhuZfOAGIIE634hWTA6V1CTaQlF272v3VRJ5t_F7OfSKPH0qbBQbUSvLlQnw3x/pub?gid=1484906078&single=true&output=csv';
+const CONTRIBUTOR_CATEGORIES = ['網站維護', '面板分享'];
+const contributorEnglishSort = new Intl.Collator('en', { sensitivity: 'base', numeric: true });
+const contributorStrokeSort = new Intl.Collator('zh-Hant-u-co-stroke', { numeric: true });
+const contributors = { status: 'idle', groups: null };
 const CSV_REQUEST_TIMEOUT_MS = 10000;
 const IMAGE_PRELOAD_TIMEOUT_MS = 8000;
 const MAIN_DATA_RETRIES = 1;
@@ -79,6 +84,169 @@ const bootProgress = {
   stage: '資料載入中'
 };
 const LOCAL_FOLDER_KEY = 'ladsbattle_local_folder_v1';
+
+// Search links store only committed filters, never private folder data or UI state.
+const SEARCH_FILTER_FIELDS = { dir: 'Stella', card: 'Card', partner: 'Partner' };
+const SEARCH_FILTER_SIDES = { upper: 'T1_', lower: 'T2_' };
+const SEARCH_PARAM_KEYS = [
+  'mode', 'orbit', 'level', 'layer', 'range', 'character', 'partner', 'card', 'video',
+  // Include legacy names so old links can be read and normalized on the next sync.
+  ...Object.entries(SEARCH_FILTER_SIDES).flatMap(([side, prefix]) =>
+    Object.values(SEARCH_FILTER_FIELDS).flatMap(field => [prefix + field, side + field]))
+];
+let restoringSearchUrl = true;
+
+function searchParamsForTab(tab) {
+  const params = new URLSearchParams();
+  if (tab === 'endless') {
+    params.set('mode', 'endless');
+    if (state.endless.character) params.set('character', state.endless.character);
+    if (state.endless.partner) params.set('partner', state.endless.partner);
+    if (state.endless.card) params.set('card', state.endless.card);
+    if (state.endless.videoOnly) params.set('video', '1');
+  } else if (state.panel.orbit) {
+    params.set('mode', 'orbit');
+    params.set('orbit', ORBIT_LABEL[state.panel.orbit]);
+    const layer = getExactLayerValue();
+    if (layer !== null) params.set('level', String(layer));
+    else if (state.panel.rangeKey) params.set('range', state.panel.rangeKey);
+    for (const side of ['upper', 'lower']) {
+      for (const filter of state.panel.layerFilters[side]) {
+        params.set(SEARCH_FILTER_SIDES[side] + SEARCH_FILTER_FIELDS[filter.type], filter.type === 'dir' ? dirLabel(filter.value) : filter.value);
+      }
+    }
+    if (state.panel.videoOnly) params.set('video', '1');
+  }
+  return params;
+}
+
+function syncSearchUrl(tab, keepNotice = false) {
+  if (appLoading || restoringSearchUrl) return;
+  const activeTab = document.querySelector('.tab-nav')?.dataset.active || 'panel';
+  if (tab !== activeTab) return;
+  if (!keepNotice) showSearchLinkNotice('');
+  const url = new URL(window.location.href);
+  SEARCH_PARAM_KEYS.forEach(key => url.searchParams.delete(key));
+  searchParamsForTab(tab).forEach((value, key) => url.searchParams.set(key, value));
+  // Preserve the deployment path, unrelated query parameters, hash and history entry.
+  if (url.href !== window.location.href) {
+    try {
+      window.history.replaceState(window.history.state, '', url.href);
+    } catch (error) {
+      console.warn('Search URL could not be updated:', error);
+    }
+  }
+}
+
+function showSearchLinkNotice(message) {
+  const notice = document.getElementById('searchLinkStatus');
+  if (!notice) return;
+  notice.textContent = message;
+  notice.hidden = !message;
+}
+
+// Validate the hierarchy before applying it. Missing advanced options remain exact
+// constraints (zero matches), so an old link never silently broadens its results.
+function parseSearchLink(params) {
+  const read = key => {
+    const value = params.get(key) || '';
+    if (params.getAll(key).length > 1 || value.length > 150) throw new Error('Invalid search parameter');
+    return value;
+  };
+  SEARCH_PARAM_KEYS.forEach(read);
+  const readCompatible = (key, legacyKey) => read(params.has(key) ? key : legacyKey);
+  const mode = read('mode');
+  if (mode && mode !== 'orbit' && mode !== 'endless') throw new Error('Invalid search mode');
+  if (read('video') && !['0', '1'].includes(read('video'))) throw new Error('Invalid video filter');
+  if (mode === 'endless') {
+    const next = createEndlessFilterState();
+    const partner = read('partner');
+    const character = read('character') ? getEndlessCharacter(read('character'))
+      : ENDLESS_CHARACTER_CATALOG.find(item => item.visible && item.partners.includes(partner));
+    if ((read('character') || partner) && !character) throw new Error('Unknown character');
+    if (partner && !character.partners.includes(partner)) throw new Error('Unknown companion');
+    if ((read('card') || read('video') === '1') && !partner) throw new Error('Missing companion');
+    next.character = character?.name || null;
+    next.partner = partner || null;
+    next.card = read('card') || null;
+    next.videoOnly = read('video') === '1';
+    next.advancedFilterOpen = Boolean(next.card || next.videoOnly);
+    return { tab: 'endless', filters: next };
+  }
+  const next = createPanelFilterState();
+  const orbit = read('orbit');
+  next.orbit = Object.keys(ORBIT_LABEL).find(key => ORBIT_LABEL[key] === orbit || key === orbit) || null;
+  if (orbit && !next.orbit) throw new Error('Unknown orbit');
+  const level = readCompatible('level', 'layer');
+  if (level) {
+    const layer = Number(level);
+    if (!next.orbit || !/^\d+$/.test(level) || !Number.isInteger(layer) || layer < 1 || layer > LIMITS[next.orbit]) {
+      throw new Error('Invalid layer');
+    }
+    next.committedOrbit = next.orbit;
+    next.committedLayer = layer;
+  } else if (read('range')) {
+    const match = /^(\d+)-(\d+)$/.exec(read('range'));
+    const start = Number(match?.[1]);
+    const end = Number(match?.[2]);
+    if (!next.orbit || !match || start < 1 || (start - 1) % 60 !== 0 || start > LIMITS[next.orbit]
+      || end !== Math.min(start + 59, LIMITS[next.orbit])) throw new Error('Invalid layer range');
+    next.rangeKey = `${start}-${end}`;
+  }
+  for (const side of ['upper', 'lower']) {
+    for (const [type, field] of Object.entries(SEARCH_FILTER_FIELDS)) {
+      const value = readCompatible(SEARCH_FILTER_SIDES[side] + field, side + field);
+      if (!value) continue;
+      if (next.committedLayer === null || (type === 'dir' && !['順譜', '逆譜'].includes(value))) {
+        throw new Error('Invalid advanced filter');
+      }
+      next.layerFilters[side].push({ type, value: type === 'dir' ? value.slice(0, 1) : value, order: ++next.dynamicFilterOrder });
+    }
+  }
+  next.videoOnly = read('video') === '1';
+  if (next.videoOnly && next.committedLayer === null) throw new Error('Missing exact layer');
+  next.advancedFilterOpen = next.videoOnly || next.dynamicFilterOrder > 0;
+  return { tab: 'panel', filters: next };
+}
+
+function restoreSearchFromUrl() {
+  if (appLoading) return;
+  restoringSearchUrl = true;
+  let tab = 'panel';
+  showSearchLinkNotice('');
+  try {
+    const restored = parseSearchLink(new URLSearchParams(window.location.search));
+    tab = restored.tab;
+    Object.assign(state[tab], restored.filters);
+    if (tab === 'panel' && state.panel.committedLayer !== null) {
+      const range = getLayerRanges().find(item => item.layers.includes(state.panel.committedLayer));
+      state.panel.rangeKey = range?.key || null;
+      state.panel.manualEntryOpen = !range;
+      state.panel.manualLayerValue = range ? '' : String(state.panel.committedLayer);
+    }
+  } catch (error) {
+    resetPanelFilterState();
+    showSearchLinkNotice('連結中的搜尋條件無法辨識，請重新選擇。');
+  }
+  // Restore the visible tab immediately, without a transition from the wrong tab.
+  if (tabFadeTimer) window.clearTimeout(tabFadeTimer);
+  tabFadeTimer = null;
+  document.querySelector('.tab-nav')?.setAttribute('data-active', tab);
+  document.querySelectorAll('.tab-btn').forEach(button => button.classList.toggle('active', button.dataset.searchTab === tab));
+  document.querySelectorAll('.section').forEach(section => {
+    section.classList.toggle('active', section.id === `section-${tab}`);
+    section.classList.remove('is-fading');
+  });
+  updatePrimaryTabSlider();
+  syncVideoFilterControls();
+  syncOrbitPillState();
+  updatePanelFilterUI();
+  renderEndlessSelector();
+  applyFilters();
+  applyEndlessFilters();
+  restoringSearchUrl = false;
+  syncSearchUrl(tab, true);
+}
 
 function loadingMarkup(message = '資料載入中…') {
   return `<span class="loading-inline"><span class="loading-spinner"></span><span class="loading-text">${escapeHtml(message)}</span></span>`;
@@ -353,6 +521,101 @@ function parseChangelogCSV(text) {
   }).filter(item => item.date && item.note);
 }
 
+// Published Sheets CSV may contain quoted commas, line breaks and escaped quotes.
+function parseContributorCSV(text) {
+  const records = [];
+  let record = '';
+  let quoted = false;
+  for (const char of text.replace(/^\uFEFF/, '')) {
+    if (char === '"') quoted = !quoted;
+    if ((char === '\n' || char === '\r') && !quoted) {
+      if (record.trim()) records.push(parseCsvLine(record));
+      record = '';
+    } else record += char;
+  }
+  if (record.trim()) records.push(parseCsvLine(record));
+  if (quoted) throw new Error('Unclosed CSV quotation');
+  const headers = records.shift() || [];
+  const nameIndex = headers.indexOf('名稱');
+  const categoryIndex = headers.findIndex(header => header === '貢獻別' || header === '分類');
+  if (nameIndex < 0 || categoryIndex < 0) throw new Error('Missing contributor CSV headers');
+  const names = Object.fromEntries(CONTRIBUTOR_CATEGORIES.map(category => [category, new Set()]));
+  records.forEach(row => {
+    const name = (row[nameIndex] || '').trim().normalize('NFC');
+    if (!name) return;
+    (row[categoryIndex] || '').split(/[、,，;；|／/\r\n]+/).forEach(tag => names[tag.trim()]?.add(name));
+  });
+  return Object.fromEntries(CONTRIBUTOR_CATEGORIES.map(category => [category, [...names[category]].sort(compareContributorNames)]));
+}
+
+function compareContributorNames(a, b) {
+  // Ignore leading punctuation when grouping; keep the displayed name intact.
+  const group = name => {
+    const firstLetter = name.match(/[A-Za-z\p{Script=Han}]/u)?.[0] || '';
+    return /^[A-Za-z]$/.test(firstLetter) ? 0 : firstLetter ? 1 : 2;
+  };
+  const difference = group(a) - group(b);
+  if (difference) return difference;
+  const compared = (group(a) === 0 ? contributorEnglishSort : contributorStrokeSort).compare(a, b);
+  return compared || (a < b ? -1 : a > b ? 1 : 0);
+}
+
+function renderContributors() {
+  const content = document.getElementById('contributorsContent');
+  if (!content) return;
+  content.setAttribute('aria-busy', String(contributors.status === 'loading'));
+  if (contributors.status === 'loading') {
+    content.innerHTML = loadingMarkup('名單載入中…');
+  } else if (contributors.status === 'error') {
+    content.innerHTML = '<p class="contributors-message">名單暫時無法載入，不影響資料庫搜尋。</p><button class="ui-control ui-control--compact ui-control--utility" type="button" data-contributors-action="retry">重新載入名單</button>';
+  } else if (contributors.status === 'loaded') {
+    content.innerHTML = CONTRIBUTOR_CATEGORIES.map(category => {
+      const names = contributors.groups[category];
+      return `<section class="contributors-group"><h3>${category}</h3>${names.length
+        ? `<ul class="contributors-names">${names.map(name => `<li><span>${escapeHtml(name).replace(/[\p{Script=Han}\p{Script=Bopomofo}\u02C7\u02CA\u02CB\u02D9]+/gu, '<span class="contributor-local-name">$&</span>')}</span></li>`).join('')}</ul>`
+        : '<p class="contributors-message">名單整理中</p>'}</section>`;
+    }).join('');
+    requestAnimationFrame(fitContributorNames);
+  }
+}
+
+// Fit the actual rendered name, including after fonts load or columns resize.
+function fitContributorNames() {
+  if (!document.getElementById('contributorsDialog')?.open) return;
+  document.querySelectorAll('.contributors-names li > span').forEach(name => {
+    name.style.fontSize = '';
+    const available = name.parentElement.clientWidth;
+    const width = name.getBoundingClientRect().width;
+    if (available > 0 && width > available) {
+      const size = parseFloat(getComputedStyle(name).fontSize);
+      name.style.fontSize = `${Math.floor(size * (available - 1) / width * 100) / 100}px`;
+    }
+  });
+}
+
+async function loadContributors() {
+  if (contributors.status === 'loading' || contributors.status === 'loaded') return;
+  contributors.status = 'loading';
+  renderContributors();
+  try {
+    contributors.groups = await fetchCsvResource(CONTRIBUTORS_CSV_URL, parseContributorCSV, null, { retries: 1 });
+    contributors.status = 'loaded';
+  } catch (error) {
+    contributors.status = 'error';
+    console.warn('Contributor list unavailable:', error);
+  }
+  renderContributors();
+}
+
+function openContributors() {
+  const dialog = document.getElementById('contributorsDialog');
+  if (!dialog || dialog.open) return;
+  dialog.showModal();
+  renderContributors();
+  document.querySelector('.contributors-scroll').scrollTop = 0;
+  loadContributors(); // Optional data: never part of the main startup progress.
+}
+
 function resetBootProgress() {
   bootProgress.csvDone = 0;
   bootProgress.csvTotal = BOOT_CSV_TOTAL;
@@ -409,10 +672,7 @@ async function loadPrimaryApplicationData() {
     appLoading = false;
     setSearchControlsDisabled(false);
     resetEndlessFilterState();
-    renderEndlessSelector();
-    renderLayerSuggestions();
-    applyFilters();
-    applyEndlessFilters();
+    restoreSearchFromUrl();
   } catch (err) {
     showBootLoadError();
     console.error(err);
@@ -1091,8 +1351,8 @@ function renderVersionHistory() {
 
 function switchInfoTab(tab) {
   const activeTab = ['guide', 'intro', 'version'].includes(tab) ? tab : 'guide';
-  document.querySelector('.info-tabs')?.setAttribute('data-active', activeTab);
-  document.querySelectorAll('.info-tab').forEach(btn => {
+  document.querySelector('#infoOverlay .info-tabs')?.setAttribute('data-active', activeTab);
+  document.querySelectorAll('#infoOverlay .info-tab').forEach(btn => {
     const isActive = btn.dataset.tab === activeTab;
     btn.classList.toggle('active', isActive);
     btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
@@ -1102,7 +1362,7 @@ function switchInfoTab(tab) {
     panel.classList.toggle('active', isActive);
     panel.hidden = !isActive;
   });
-  const infoContent = document.querySelector('.info-content');
+  const infoContent = document.querySelector('#infoOverlay .info-content');
   if (infoContent) infoContent.scrollTop = 0;
   if (activeTab === 'version') renderVersionHistory();
 }
@@ -1277,6 +1537,12 @@ function toggleDynamicFilter(side, type, value) {
 function renderDynamicFilterSide(side, optionsByType) {
   const el = document.getElementById(side === 'upper' ? 'upperDynamicChips' : 'lowerDynamicChips');
   if (!el) return;
+  state.panel.layerFilters[side].forEach(filter => {
+    const options = optionsByType[filter.type] || (optionsByType[filter.type] = []);
+    if (!options.some(option => option.value === filter.value)) {
+      options.push({ ...filter, label: filter.type === 'dir' ? dirLabel(filter.value) : filter.value });
+    }
+  });
   const hasOptions = DYNAMIC_FILTER_CATEGORIES.some(
     type => optionsByType[type]?.length
   );
@@ -1327,7 +1593,8 @@ function getPanelAdvancedBaseData() {
 }
 
 function canUsePanelAdvancedFilters(baseData = getPanelAdvancedBaseData()) {
-  return getExactLayerValue() !== null && baseData.length > 1;
+  return getExactLayerValue() !== null && (baseData.length > 1 || state.panel.videoOnly
+    || state.panel.layerFilters.upper.length > 0 || state.panel.layerFilters.lower.length > 0);
 }
 
 function hasPanelAdvancedState() {
@@ -1382,7 +1649,7 @@ function applyFilters() {
   const shouldShowAdvanced = canUsePanelAdvancedFilters(advancedBaseData);
   if (!shouldShowAdvanced && hasPanelAdvancedState()) clearPanelAdvancedState();
   const activeRange = layerNum === null && state.panel.rangeKey
-    ? getLayerRanges().find(range => range.key === state.panel.rangeKey) || null
+    ? { start: Number(state.panel.rangeKey.split('-')[0]), end: Number(state.panel.rangeKey.split('-')[1]) }
     : null;
   const videoOnly = state.panel.videoOnly;
   const shouldSearch = Boolean(state.panel.orbit || state.panel.rangeKey || videoOnly);
@@ -1499,6 +1766,30 @@ function openResultCard(type, index) {
 }
 
 function bindDelegatedInteractions() {
+  // Delegation also covers the footer, which is parsed after this script.
+  document.addEventListener('click', event => {
+    const action = event.target.closest('[data-contributors-action]')?.dataset.contributorsAction;
+    if (action === 'open') openContributors();
+    if (action === 'close') document.getElementById('contributorsDialog')?.close();
+    if (action === 'retry') loadContributors();
+  });
+  const contributorsDialog = document.getElementById('contributorsDialog');
+  if (contributorsDialog) {
+    let previousWidth = 0;
+    new ResizeObserver(([entry]) => {
+      if (entry.contentRect.width === previousWidth) return;
+      previousWidth = entry.contentRect.width;
+      fitContributorNames();
+    }).observe(contributorsDialog);
+    document.fonts.ready.then(fitContributorNames);
+    document.fonts.addEventListener('loadingdone', fitContributorNames);
+  }
+  contributorsDialog?.addEventListener('click', event => {
+    const bounds = contributorsDialog.getBoundingClientRect();
+    if (event.target === contributorsDialog && (event.clientX < bounds.left || event.clientX > bounds.right
+      || event.clientY < bounds.top || event.clientY > bounds.bottom)) contributorsDialog.close();
+  });
+  window.addEventListener('popstate', restoreSearchFromUrl);
   const layerSuggestionPanel = document.getElementById('layerSuggestionPanel');
   layerSuggestionPanel?.addEventListener('click', event => {
     const actionButton = event.target.closest('[data-layer-action]');
@@ -1789,6 +2080,7 @@ function swapResultsGrid(view, infoId, gridId, gridClass, infoText, key, renderG
 }
 
 function renderCards() {
+  syncSearchUrl('panel');
   const resultsView = document.getElementById('panelResultsView');
   const hasFilters = hasPanelFilters();
   const dataSnapshot = [...state.panel.results];
@@ -1975,6 +2267,7 @@ function switchTab(tab, btn) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   document.querySelector('.tab-nav')?.setAttribute('data-active', tab);
+  syncSearchUrl(tab);
   updatePrimaryTabSlider();
 
   if (currentSection) {
@@ -2068,7 +2361,7 @@ function getEndlessAdvancedBaseData() {
 }
 
 function canUseEndlessAdvancedFilters(baseData = getEndlessAdvancedBaseData()) {
-  return Boolean(state.endless.partner) && baseData.length > 1;
+  return Boolean(state.endless.partner) && (baseData.length > 1 || state.endless.videoOnly || Boolean(state.endless.card));
 }
 
 function hasEndlessAdvancedState() {
@@ -2099,6 +2392,9 @@ function renderEndlessDynamicFilters(baseData, shouldShow = canUseEndlessAdvance
   }
 
   const options = collectEndlessCardOptions(baseData);
+  if (state.endless.card && !options.some(option => option.value === state.endless.card)) {
+    options.push({ value: state.endless.card, label: state.endless.card });
+  }
   if (options.length === 0) {
     chips.innerHTML = '<span class="dynamic-empty">目前無可用日卡</span>';
     return;
@@ -2195,6 +2491,7 @@ function endlessCardMarkup(d, { resultIndex = null, previewType = '', previewInd
 }
 
 function renderEndless() {
+  syncSearchUrl('endless');
   const resultsView = document.getElementById('endlessResultsView');
   const hasFixedResults = Boolean(state.endless.character || state.endless.partner);
   const dataSnapshot = [...ENDLESS_DATA];
@@ -2266,6 +2563,7 @@ function closeModalDirect() {
   document.getElementById('mLowerBlock').style.display = '';
 }
 document.addEventListener('keydown', e => {
+  if (document.getElementById('contributorsDialog')?.open) return; // Native dialog handles Escape and focus.
   if (e.key === 'Escape') {
     closeModalDirect();
     closeInfoModalDirect();
