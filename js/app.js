@@ -96,6 +96,19 @@ const SEARCH_PARAM_KEYS = [
 ];
 let restoringSearchUrl = true;
 
+// Run only at startup: reload resets filters; shared links and history still restore.
+function clearSearchOnReload() {
+  if (window.performance.getEntriesByType('navigation')[0]?.type !== 'reload') return;
+  const url = new URL(window.location.href);
+  SEARCH_PARAM_KEYS.forEach(key => url.searchParams.delete(key));
+  if (url.href === window.location.href) return;
+  try {
+    window.history.replaceState(window.history.state, '', url.href);
+  } catch (error) {
+    console.warn('Search URL could not be cleared on reload:', error);
+  }
+}
+
 function searchParamsForTab(tab) {
   const params = new URLSearchParams();
   if (tab === 'endless') {
@@ -685,6 +698,7 @@ function retryBootDataLoad() {
 }
 
 async function init() {
+  clearSearchOnReload();
   loadLocalFolder();
   renderFolderPanel();
   updatePrimaryTabSlider();
