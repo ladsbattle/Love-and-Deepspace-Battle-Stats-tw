@@ -86,13 +86,13 @@ const bootProgress = {
 const LOCAL_FOLDER_KEY = 'ladsbattle_local_folder_v1';
 
 // Search links store only committed filters, never private folder data or UI state.
-const SEARCH_FILTER_FIELDS = { dir: 'Stella', card: 'Card', partner: 'Partner' };
-const SEARCH_FILTER_SIDES = { upper: 'T1_', lower: 'T2_' };
+const SEARCH_FILTER_FIELDS = { dir: 'stella', card: 'card', partner: 'companion' };
+const SEARCH_FILTER_SIDES = { upper: 't1_', lower: 't2_' };
 const SEARCH_PARAM_KEYS = [
-  'mode', 'orbit', 'level', 'layer', 'range', 'character', 'partner', 'card', 'video',
-  // Include legacy names so old links can be read and normalized on the next sync.
-  ...Object.entries(SEARCH_FILTER_SIDES).flatMap(([side, prefix]) =>
-    Object.values(SEARCH_FILTER_FIELDS).flatMap(field => [prefix + field, side + field]))
+  'orbit', 'level', 'companion', 'card', 'video',
+  ...Object.values(SEARCH_FILTER_SIDES).flatMap(prefix =>
+    Object.values(SEARCH_FILTER_FIELDS).map(field => prefix + field)
+  )
 ];
 let restoringSearchUrl = true;
 
@@ -112,17 +112,13 @@ function clearSearchOnReload() {
 function searchParamsForTab(tab) {
   const params = new URLSearchParams();
   if (tab === 'endless') {
-    params.set('mode', 'endless');
-    if (state.endless.character) params.set('character', state.endless.character);
-    if (state.endless.partner) params.set('partner', state.endless.partner);
+    if (state.endless.partner) params.set('companion', state.endless.partner);
     if (state.endless.card) params.set('card', state.endless.card);
     if (state.endless.videoOnly) params.set('video', '1');
   } else if (state.panel.orbit) {
-    params.set('mode', 'orbit');
     params.set('orbit', ORBIT_LABEL[state.panel.orbit]);
     const layer = getExactLayerValue();
     if (layer !== null) params.set('level', String(layer));
-    else if (state.panel.rangeKey) params.set('range', state.panel.rangeKey);
     for (const side of ['upper', 'lower']) {
       for (const filter of state.panel.layerFilters[side]) {
         params.set(SEARCH_FILTER_SIDES[side] + SEARCH_FILTER_FIELDS[filter.type], filter.type === 'dir' ? dirLabel(filter.value) : filter.value);
@@ -158,8 +154,7 @@ function showSearchLinkNotice(message) {
   notice.hidden = !message;
 }
 
-// Validate the hierarchy before applying it. Missing advanced options remain exact
-// constraints (zero matches), so an old link never silently broadens its results.
+// Validate the current URL schema before applying it. Unknown parameters are ignored.
 function parseSearchLink(params) {
   const read = key => {
     const value = params.get(key) || '';
@@ -167,20 +162,24 @@ function parseSearchLink(params) {
     return value;
   };
   SEARCH_PARAM_KEYS.forEach(read);
-  const readCompatible = (key, legacyKey) => read(params.has(key) ? key : legacyKey);
-  const mode = read('mode');
-  if (mode && mode !== 'orbit' && mode !== 'endless') throw new Error('Invalid search mode');
   if (read('video') && !['0', '1'].includes(read('video'))) throw new Error('Invalid video filter');
+  const companion = read('companion');
+  const level = read('level');
+  const hasOrbitFilters = Boolean(
+    read('orbit') || level
+    || Object.values(SEARCH_FILTER_SIDES).some(prefix =>
+      Object.values(SEARCH_FILTER_FIELDS).some(field => read(prefix + field)))
+  );
+  const hasEndlessFilters = Boolean(companion || read('card'));
+  if (hasOrbitFilters && hasEndlessFilters) throw new Error('Mixed search modes');
+  const mode = hasEndlessFilters ? 'endless' : 'orbit';
   if (mode === 'endless') {
     const next = createEndlessFilterState();
-    const partner = read('partner');
-    const character = read('character') ? getEndlessCharacter(read('character'))
-      : ENDLESS_CHARACTER_CATALOG.find(item => item.visible && item.partners.includes(partner));
-    if ((read('character') || partner) && !character) throw new Error('Unknown character');
-    if (partner && !character.partners.includes(partner)) throw new Error('Unknown companion');
-    if ((read('card') || read('video') === '1') && !partner) throw new Error('Missing companion');
+    const character = ENDLESS_CHARACTER_CATALOG.find(item => item.visible && item.partners.includes(companion));
+    if (companion && !character) throw new Error('Unknown companion');
+    if ((read('card') || read('video') === '1') && !companion) throw new Error('Missing companion');
     next.character = character?.name || null;
-    next.partner = partner || null;
+    next.partner = companion || null;
     next.card = read('card') || null;
     next.videoOnly = read('video') === '1';
     next.advancedFilterOpen = Boolean(next.card || next.videoOnly);
@@ -190,7 +189,6 @@ function parseSearchLink(params) {
   const orbit = read('orbit');
   next.orbit = Object.keys(ORBIT_LABEL).find(key => ORBIT_LABEL[key] === orbit || key === orbit) || null;
   if (orbit && !next.orbit) throw new Error('Unknown orbit');
-  const level = readCompatible('level', 'layer');
   if (level) {
     const layer = Number(level);
     if (!next.orbit || !/^\d+$/.test(level) || !Number.isInteger(layer) || layer < 1 || layer > LIMITS[next.orbit]) {
@@ -198,17 +196,10 @@ function parseSearchLink(params) {
     }
     next.committedOrbit = next.orbit;
     next.committedLayer = layer;
-  } else if (read('range')) {
-    const match = /^(\d+)-(\d+)$/.exec(read('range'));
-    const start = Number(match?.[1]);
-    const end = Number(match?.[2]);
-    if (!next.orbit || !match || start < 1 || (start - 1) % 60 !== 0 || start > LIMITS[next.orbit]
-      || end !== Math.min(start + 59, LIMITS[next.orbit])) throw new Error('Invalid layer range');
-    next.rangeKey = `${start}-${end}`;
   }
   for (const side of ['upper', 'lower']) {
     for (const [type, field] of Object.entries(SEARCH_FILTER_FIELDS)) {
-      const value = readCompatible(SEARCH_FILTER_SIDES[side] + field, side + field);
+      const value = read(SEARCH_FILTER_SIDES[side] + field);
       if (!value) continue;
       if (next.committedLayer === null || (type === 'dir' && !['順譜', '逆譜'].includes(value))) {
         throw new Error('Invalid advanced filter');
