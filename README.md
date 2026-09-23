@@ -25,7 +25,7 @@ The parser reads columns by position rather than by header name. Include one hea
 ### Orbit
 
 ```text
-Orbit → Layer → Upper Card → Upper Companion → Upper Stella → Lower Card → Lower Companion → Lower Stella → Has Video → Link
+Orbit → Level → Upper Card → Upper Companion → Upper Stella → Lower Card → Lower Companion → Lower Stella → Has Video → Link
 ```
 
 ### Endless Challenge
@@ -42,7 +42,7 @@ When adding or editing records:
 - Enter `TRUE` in `Has Video` only when the record includes a video. Every other value is treated as false.
 - Enter Stella Match Count and Score as numeric values without descriptive text.
 - Make sure each Link points to the corresponding battle record.
-- Within the same Orbit and Layer, maintainers may adjust row order based on readability and reference value.
+- Within the same Orbit and Level, maintainers may adjust row order based on readability and reference value.
 
 ## Deployment
 
@@ -50,8 +50,7 @@ This project is deployed with GitHub Pages.
 
 Upload the contents of this deployment folder (`outputs/` in the local workspace) to the repository root while preserving the `css/`, `js/` and `assets/` directory structure. Do not upload an extra enclosing `outputs/` or `split/` folder.
 
-- Include `index.html`, `css/`, `js/`, `assets/`, `README.md`, `valko-launch.md`, `robots.txt`, `sitemap.xml` and `.gitignore`.
-- Exclude `.DS_Store` and `._*` files. Git ignore rules do not filter files uploaded manually through a browser.
+- Include `index.html`, `css/`, `js/`, `assets/`, `README.md`, `valko-launch.md`, `robots.txt` and `sitemap.xml`.
 - When CSS or JavaScript changes, update the corresponding `?v=` value in `index.html`, then upload the changed asset and `index.html` together.
 - Keep the canonical URL, `og:url`, README website link, sitemap URL and robots sitemap declaration pointed at the production website.
 - Update the sitemap `lastmod` for meaningful website releases. Website Version History is maintained separately in Google Sheets.
