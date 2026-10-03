@@ -42,7 +42,20 @@ When adding or editing records:
 - Enter `TRUE` in `Has Video` only when the record includes a video. Every other value is treated as false.
 - Enter Stella Match Count and Score as numeric values without descriptive text.
 - Make sure each Link points to the corresponding battle record.
-- Within the same Orbit and Level, maintainers may adjust row order based on readability and reference value.
+- New rows may be appended anywhere in the worksheet. Website display order is controlled by `js/catalog.js`, not by the worksheet row position.
+
+## Catalog and Display Order
+
+`js/catalog.js` is the single source of truth for active Orbits, maximum levels, character order, all companion ownership, rarity and order, portrait paths and result sorting. Each character and their matching directional Orbit share one entry in `CHARACTER_RELEASES`; changing that single flag controls both modes. Endless Challenge companion options are derived automatically from companions whose `rarity` is `5`.
+
+- Companions within each character are sorted by rarity first (five-star before four-star). Five-star companions follow their explicit catalog `order`, which records release order; four-star companions sort automatically with English names first, followed by Traditional Chinese stroke order.
+- Orbit results: Orbit order → Level ascending → T1 Companion → T1 Card → T1 Stella → T2 Companion → T2 Card → T2 Stella → video availability as the final tie-breaker.
+- Endless Challenge results: Character → Companion → Stella Match Count ascending → Card → Score ascending → video availability as the final tie-breaker.
+- Card order: No Set → Rank 0 → Rank 1 → Rank 2 → Rank 3.
+- Stella order: Forward → Reverse.
+- Favorites retain the player's save order. Browsing History remains newest first.
+
+When adding a character or companion, update `js/catalog.js` and add the matching portrait. Do not duplicate companion names in `app.js` or `styles.css`.
 
 ## Deployment
 
@@ -50,7 +63,7 @@ This project is deployed with GitHub Pages.
 
 Upload the contents of this deployment folder (`outputs/` in the local workspace) to the repository root while preserving the `css/`, `js/` and `assets/` directory structure. Do not upload an extra enclosing `outputs/` or `split/` folder.
 
-- Include `index.html`, `css/`, `js/`, `assets/`, `README.md`, `valko-launch.md`, `robots.txt` and `sitemap.xml`.
+- Include `index.html`, `css/`, `js/` (including `catalog.js`), `assets/`, `README.md`, `VALKO-LAUNCH.md`, `robots.txt` and `sitemap.xml`.
 - When CSS or JavaScript changes, update the corresponding `?v=` value in `index.html`, then upload the changed asset and `index.html` together.
 - Keep the canonical URL, `og:url`, README website link, sitemap URL and robots sitemap declaration pointed at the production website.
 - Update the sitemap `lastmod` for meaningful website releases. Website Version History is maintained separately in Google Sheets.
@@ -59,4 +72,4 @@ Upload the contents of this deployment folder (`outputs/` in the local workspace
 
 ## Notes
 
-Valko is not enabled yet, but his place in this project is reserved. The integration and release checklist is maintained in [valko-launch.md](valko-launch.md).
+Valko is not enabled yet, but his place in this project is reserved. The integration and release checklist is maintained in [VALKO-LAUNCH.md](VALKO-LAUNCH.md).

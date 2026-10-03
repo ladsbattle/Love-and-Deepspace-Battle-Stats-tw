@@ -1,7 +1,5 @@
 
 // Parse data
-const LIMITS = { 光:210, 冰:210, 火:240, 能量:180, 引力:180, 金屬:180, 開放:300, 波動:60 };
-const ORBIT_LABEL = { 開放:'開放穩定', 波動:'開放波動', 光:'光', 冰:'冰', 火:'火', 能量:'能量', 引力:'引力', 金屬:'金屬' };
 const PANEL_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTfNvGSQbmwwXodVzmhuZfOAGIIE634hWTA6V1CTaQlF272v3VRJ5t_F7OfSKPH0qbBQbUSvLlQnw3x/pub?output=csv';
 const ENDLESS_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTfNvGSQbmwwXodVzmhuZfOAGIIE634hWTA6V1CTaQlF272v3VRJ5t_F7OfSKPH0qbBQbUSvLlQnw3x/pub?gid=1577067344&single=true&output=csv';
 const CHANGELOG_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTfNvGSQbmwwXodVzmhuZfOAGIIE634hWTA6V1CTaQlF272v3VRJ5t_F7OfSKPH0qbBQbUSvLlQnw3x/pub?gid=1820828638&single=true&output=csv';
@@ -13,19 +11,10 @@ const contributors = { status: 'idle', groups: null };
 const CSV_REQUEST_TIMEOUT_MS = 10000;
 const IMAGE_PRELOAD_TIMEOUT_MS = 8000;
 const MAIN_DATA_RETRIES = 1;
-const ENDLESS_CHARACTER_CATALOG = [
-  { name: '沈星回', theme: '光', visible: true, partners: ['逐光騎士', '光獵', '暗蝕國王'] },
-  { name: '黎深', theme: '冰', visible: true, partners: ['永恆先知', '九黎司命', '終末之神'] },
-  { name: '祁煜', theme: '火', visible: true, partners: ['深海潛行者', '潮汐之神', '利莫里亞海神', '赤霄武神'] },
-  { name: '秦徹', theme: '能量', visible: true, partners: ['無盡掠奪者', '深淵主宰', '銀翼惡魔'] },
-  { name: '夏以晝', theme: '引力', visible: true, partners: ['遠空執艦官', '終極兵器X-02', '冥羅之主'] },
-  { name: '敖尹', theme: '金屬', visible: false, partners: [] }
-];
-
 let DATA = [];
 let ENDLESS_DATA = [];
 let ENDLESS_ALL = [];
-const DYNAMIC_FILTER_CATEGORIES = ['dir', 'card', 'partner'];
+const DYNAMIC_FILTER_CATEGORIES = FILTER_CATEGORY_ORDER;
 
 function createPanelFilterState() {
   return {
@@ -367,7 +356,7 @@ function rankImageSrcFromCard(card) {
 function addCompanionImage(urls, partner) {
   const text = String(partner || '').trim();
   if (!text || text === 'N/A') return;
-  urls.add(`assets/companions/${encodeURIComponent(text)}.png`);
+  urls.add(companionImagePath(text));
 }
 
 function addRankImage(urls, card) {
@@ -666,8 +655,8 @@ async function loadPrimaryApplicationData() {
       loadPrimaryCsv(PANEL_CSV_URL, parseCSV),
       loadPrimaryCsv(ENDLESS_CSV_URL, parseEndlessCSV)
     ]);
-    DATA = panelRows;
-    ENDLESS_ALL = endlessRows;
+    DATA = stableCatalogSort(panelRows, comparePanelRows);
+    ENDLESS_ALL = stableCatalogSort(endlessRows, compareEndlessRows);
     ENDLESS_DATA = [...ENDLESS_ALL];
     previewModule.prime('panel');
     previewModule.prime('endless');
@@ -690,6 +679,7 @@ function retryBootDataLoad() {
 
 async function init() {
   clearSearchOnReload();
+  renderOrbitSelector();
   loadLocalFolder();
   renderFolderPanel();
   updatePrimaryTabSlider();
@@ -786,6 +776,22 @@ function syncOrbitPillState() {
   document.querySelectorAll('#orbitChips [data-orbit]').forEach(button => {
     button.setAttribute('aria-pressed', String(button.dataset.orbit === state.panel.orbit));
   });
+}
+
+function renderOrbitSelector() {
+  const openRow = document.querySelector('#orbitChips .orbit-row-open');
+  const directionalGrid = document.querySelector('#orbitChips .orbit-grid-directional');
+  if (!openRow || !directionalGrid) return;
+  const buttonMarkup = orbit => `
+    <button class="chip ui-pill ui-pill--primary"
+      data-orbit="${escapeHtml(orbit.key)}"
+      aria-pressed="${state.panel.orbit === orbit.key}"
+      onclick="selectOrbit(this)">${escapeHtml(orbit.label)}</button>`;
+  const visibleOrbits = ORBIT_CATALOG
+    .filter(orbit => orbit.visible)
+    .sort((a, b) => a.order - b.order);
+  openRow.innerHTML = visibleOrbits.filter(orbit => orbit.group === 'open').map(buttonMarkup).join('');
+  directionalGrid.innerHTML = visibleOrbits.filter(orbit => orbit.group === 'directional').map(buttonMarkup).join('');
 }
 
 function selectOrbit(btn) {
@@ -1020,40 +1026,8 @@ function addOption(map, type, value, label = value) {
   if (!map.has(key)) map.set(key, { type, value, label });
 }
 
-function leadingRank(value) {
-  const match = String(value).match(/^(\d+)/);
-  return match ? parseInt(match[1], 10) : 999;
-}
-
-function cardSetName(value) {
-  const text = String(value || '').trim();
-  const match = text.match(/^\d+\s*階\s*(.+)$/);
-  return match ? match[1].trim() : text;
-}
-
 function sortCardsBySetAndRank(cards) {
-  const setMinRank = new Map();
-  cards.forEach(card => {
-    if (card.value === '無套裝') return;
-    const setName = cardSetName(card.value);
-    const rank = leadingRank(card.value);
-    const current = setMinRank.get(setName);
-    if (current === undefined || rank < current) setMinRank.set(setName, rank);
-  });
-
-  return cards.sort((a, b) => {
-    if (a.value === '無套裝' && b.value !== '無套裝') return -1;
-    if (b.value === '無套裝' && a.value !== '無套裝') return 1;
-    const aSet = cardSetName(a.value);
-    const bSet = cardSetName(b.value);
-    const setRankDiff = (setMinRank.get(aSet) ?? 999) - (setMinRank.get(bSet) ?? 999);
-    if (setRankDiff !== 0) return setRankDiff;
-    const setNameDiff = aSet.localeCompare(bSet, 'zh-Hant');
-    if (setNameDiff !== 0) return setNameDiff;
-    const rankDiff = leadingRank(a.value) - leadingRank(b.value);
-    if (rankDiff !== 0) return rankDiff;
-    return a.value.localeCompare(b.value, 'zh-Hant');
-  });
+  return cards.sort((a, b) => compareCards(a.value, b.value));
 }
 
 function collectLayerOptions(data, side) {
@@ -1066,11 +1040,11 @@ function collectLayerOptions(data, side) {
     addOption(cardMap, 'card', d[`${prefix}Card`]);
     addOption(partnerMap, 'partner', d[`${prefix}Partner`]);
   });
-  const dirs = ['順', '逆']
+  const dirs = STELLA_ORDER
     .map(dir => dirMap.get(`dir:${dir}`))
     .filter(Boolean);
   const cards = sortCardsBySetAndRank([...cardMap.values()]);
-  const partners = [...partnerMap.values()];
+  const partners = [...partnerMap.values()].sort((a, b) => compareCompanionNames(a.value, b.value));
   return { card: cards, partner: partners, dir: dirs };
 }
 
@@ -2122,7 +2096,7 @@ function rankIconMarkup(card) {
 function companionIconMarkup(partner) {
   const text = String(partner || '').trim();
   if (!text) return '';
-  const src = `assets/companions/${encodeURIComponent(text)}.png`;
+  const src = companionImagePath(text);
   return `<img class="companion-avatar" src="${src}" alt="" aria-hidden="true" loading="lazy" onerror="this.remove()">`;
 }
 
@@ -2304,6 +2278,7 @@ function renderEndlessSelector() {
 
   characterGrid.innerHTML = ENDLESS_CHARACTER_CATALOG
     .filter(character => character.visible)
+    .sort((a, b) => a.order - b.order)
     .map(character => `
       <button class="endless-character-button ui-pill ui-pill--primary"
         data-endless-character="${escapeHtml(character.name)}"
@@ -2322,7 +2297,7 @@ function renderEndlessSelector() {
           data-endless-partner="${escapeHtml(partner)}"
           data-theme="${escapeHtml(selectedCharacter.theme)}"
           aria-pressed="${state.endless.partner === partner}">
-          <img src="assets/companions/${encodeURIComponent(partner)}.png" alt="" loading="lazy">
+          <img src="${companionImagePath(partner)}" alt="" loading="lazy">
           <span>${escapeHtml(partner)}</span>
         </button>
       `).join('')
@@ -2463,6 +2438,7 @@ function fmtScore(s) {
 function endlessCardMarkup(d, { resultIndex = null, previewType = '', previewIndex = null } = {}) {
   const folderItem = endlessFolderItem(d);
   const partner = escapeHtml(d.partner);
+  const theme = escapeHtml(companionTheme(d.partner));
   const card = `${escapeHtml(d.card)}${rankIconMarkup(d.card)}`;
   const combo = escapeHtml(d.combo);
   const previewAttrs = previewType ? ` data-preview-type="${previewType}" data-preview-index="${previewIndex}"` : '';
@@ -2470,11 +2446,11 @@ function endlessCardMarkup(d, { resultIndex = null, previewType = '', previewInd
     ? ` data-result-type="endless" data-result-index="${resultIndex}" role="button" tabindex="0"`
     : '';
   return `
-    <div class="endless-card${viewedCardClass(folderItem)}" data-view-key="${escapeHtml(encodedItemKey(folderItem))}" data-partner="${partner}"${previewAttrs}${resultAttrs}>
+    <div class="endless-card${viewedCardClass(folderItem)}" data-view-key="${escapeHtml(encodedItemKey(folderItem))}" data-partner="${partner}" data-theme="${theme}"${previewAttrs}${resultAttrs}>
       ${viewedCardMarkup(folderItem)}
       <div class="endless-card-header">
         <div class="card-labels">
-          <span class="partner-badge" data-partner="${partner}">${partner}</span>
+          <span class="partner-badge" data-partner="${partner}" data-theme="${theme}">${partner}</span>
         </div>
         <div class="card-meta-right">
           <span class="endless-score">${escapeHtml(fmtScore(d.score))} 分</span>
@@ -2536,7 +2512,7 @@ function openEndlessDetail(d, recordHistory = true) {
   document.getElementById('mUpperBlock').querySelector('.modal-block-title') && document.getElementById('mUpperBlock').querySelector('.modal-block-title').remove();
   document.getElementById('mLowerBlock').querySelector('.modal-block-title') && document.getElementById('mLowerBlock').querySelector('.modal-block-title').remove();
 
-  document.getElementById('mOrbit').innerHTML = `<span class="partner-badge" data-partner="${escapeHtml(d.partner)}">${companionInlineMarkup(d.partner)}</span>`;
+  document.getElementById('mOrbit').innerHTML = `<span class="partner-badge" data-partner="${escapeHtml(d.partner)}" data-theme="${escapeHtml(companionTheme(d.partner))}">${companionInlineMarkup(d.partner)}</span>`;
   document.getElementById('mLayer').textContent = fmtScore(d.score) + ' 分';
   document.getElementById('mLayer').style.color = 'var(--text)';
   document.getElementById('mUpperContent').innerHTML = `
