@@ -52,7 +52,7 @@ When adding or editing records:
 - Orbit results: Orbit order → Level ascending → T1 Companion → T1 Card → T1 Stella → T2 Companion → T2 Card → T2 Stella → video availability as the final tie-breaker.
 - Endless Challenge results: Character → Companion → Stella Match Count ascending → Card → Score ascending → video availability as the final tie-breaker.
 - Card order: No Set → Rank 0 → Rank 1 → Rank 2 → Rank 3.
-- Stella order: Forward → Reverse.
+- Stella order: Stella matched → Brute forced.
 - Favorites retain the player's save order. Browsing History remains newest first.
 
 When adding a character or companion, update `js/catalog.js` and add the matching portrait. Do not duplicate companion names in `app.js` or `styles.css`.
