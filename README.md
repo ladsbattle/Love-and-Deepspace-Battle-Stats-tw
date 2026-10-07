@@ -49,10 +49,9 @@ When adding or editing records:
 `js/catalog.js` is the single source of truth for active Orbits, maximum levels, character order, all companion ownership, rarity and order, portrait paths and result sorting. Each character and their matching directional Orbit share one entry in `CHARACTER_RELEASES`; changing that single flag controls both modes. Endless Challenge companion options are derived automatically from companions whose `rarity` is `5`.
 
 - Companions within each character are sorted by rarity first (five-star before four-star). Five-star companions follow their explicit catalog `order`, which records release order; four-star companions sort automatically with English names first, followed by Traditional Chinese stroke order.
-- Orbit results: Orbit order → Level ascending → T1 Companion → T1 Card → T1 Stella → T2 Companion → T2 Card → T2 Stella → video availability as the final tie-breaker.
+- Orbit results: Orbit order → Level ascending → T1 Card → T2 Card → video availability as the final tie-breaker. T1/T2 Companions and Stella labels do not affect display order.
 - Endless Challenge results: Character → Companion → Stella Match Count ascending → Card → Score ascending → video availability as the final tie-breaker.
 - Card order: No Set → Rank 0 → Rank 1 → Rank 2 → Rank 3.
-- Stella order: Stella matched → Brute forced.
 - Favorites retain the player's save order. Browsing History remains newest first.
 
 When adding a character or companion, update `js/catalog.js` and add the matching portrait. Do not duplicate companion names in `app.js` or `styles.css`.

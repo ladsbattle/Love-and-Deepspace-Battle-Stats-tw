@@ -9,7 +9,7 @@ const CHARACTER_RELEASES = {
   '祁煜': true,
   '秦徹': true,
   '夏以晝': true,
-  '敖尹': false
+  '敖尹': true
 };
 
 const ORBIT_CATALOG = [
@@ -179,13 +179,6 @@ function compareCards(a, b) {
     || String(a).localeCompare(String(b), 'zh-Hant');
 }
 
-function compareStella(a, b) {
-  const first = STELLA_ORDER.indexOf(String(a || '').slice(0, 1));
-  const second = STELLA_ORDER.indexOf(String(b || '').slice(0, 1));
-  return compareCatalogNumber(first < 0 ? undefined : first, second < 0 ? undefined : second)
-    || String(a).localeCompare(String(b), 'zh-Hant');
-}
-
 function compareBooleanPreferred(a, b) {
   return Number(Boolean(b)) - Number(Boolean(a));
 }
@@ -193,12 +186,8 @@ function compareBooleanPreferred(a, b) {
 function comparePanelRows(a, b) {
   return compareOrbitKeys(a.orbit, b.orbit)
     || compareCatalogNumber(a.layer, b.layer)
-    || compareCompanionNames(a.upperPartner, b.upperPartner)
     || compareCards(a.upperCard, b.upperCard)
-    || compareStella(a.upperDir, b.upperDir)
-    || compareCompanionNames(a.lowerPartner, b.lowerPartner)
     || compareCards(a.lowerCard, b.lowerCard)
-    || compareStella(a.lowerDir, b.lowerDir)
     || compareBooleanPreferred(a.hasVideo, b.hasVideo);
 }
 
