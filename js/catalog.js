@@ -9,7 +9,7 @@ const CHARACTER_RELEASES = {
   '祁煜': true,
   '秦徹': true,
   '夏以晝': true,
-  '敖尹': true
+  '敖尹': false
 };
 
 const ORBIT_CATALOG = [
