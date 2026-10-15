@@ -14,7 +14,7 @@ const CHARACTER_RELEASES = {
 
 const ORBIT_CATALOG = [
   { key: '開放', label: '開放穩定', group: 'open', order: 10, maxLevel: 300, visible: true },
-  { key: '波動', label: '開放波動', group: 'open', order: 20, maxLevel: 60, visible: true },
+  { key: '波動', label: '開放波動', group: 'open', order: 20, maxLevel: 60, rangeSize: 10, visible: true },
   { key: '光', label: '光', group: 'directional', order: 30, maxLevel: 210, visible: CHARACTER_RELEASES['沈星回'] },
   { key: '冰', label: '冰', group: 'directional', order: 40, maxLevel: 210, visible: CHARACTER_RELEASES['黎深'] },
   { key: '火', label: '火', group: 'directional', order: 50, maxLevel: 240, visible: CHARACTER_RELEASES['祁煜'] },
@@ -117,7 +117,16 @@ const STELLA_ORDER = ['順', '逆'];
 
 const ORBIT_LABEL = Object.fromEntries(ORBIT_CATALOG.map(orbit => [orbit.key, orbit.label]));
 const LIMITS = Object.fromEntries(ORBIT_CATALOG.map(orbit => [orbit.key, orbit.maxLevel]));
+const RANGE_SIZES = Object.fromEntries(ORBIT_CATALOG.map(orbit => [orbit.key, orbit.rangeSize || 60]));
 const ORBIT_ORDER = new Map(ORBIT_CATALOG.map(orbit => [orbit.key, orbit.order]));
+
+function layerRangeBounds(orbitKey, layer) {
+  const rangeSize = Number.isFinite(RANGE_SIZES[orbitKey]) ? RANGE_SIZES[orbitKey] : 60;
+  const orbitLimit = Number.isFinite(LIMITS[orbitKey]) ? LIMITS[orbitKey] : Infinity;
+  const start = 1 + Math.floor((layer - 1) / rangeSize) * rangeSize;
+  const end = Math.min(start + rangeSize - 1, orbitLimit);
+  return { key: `${start}-${end}`, start, end };
+}
 
 const COMPANION_CATALOG = new Map();
 CHARACTER_CATALOG.forEach(character => {
