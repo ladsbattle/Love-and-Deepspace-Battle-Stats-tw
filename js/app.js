@@ -825,9 +825,7 @@ function getLayerRanges() {
   const ranges = new Map();
 
   layers.forEach(layer => {
-    const start = layer <= 60 ? 1 : 61 + Math.floor((layer - 61) / 60) * 60;
-    const end = Math.min(start === 1 ? 60 : start + 59, orbitLimit);
-    const key = `${start}-${end}`;
+    const { key, start, end } = layerRangeBounds(state.panel.orbit, layer);
     if (!ranges.has(key)) ranges.set(key, { key, start, end, layers: [] });
     ranges.get(key).layers.push(layer);
   });
