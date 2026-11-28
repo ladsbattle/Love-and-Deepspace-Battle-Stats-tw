@@ -29,7 +29,8 @@ function createPanelFilterState() {
     advancedFilterOpen: false,
     videoOnly: false,
     committedOrbit: null,
-    committedLayer: null
+    committedLayer: null,
+    starFilter: null
   };
 }
 
@@ -78,7 +79,7 @@ const LOCAL_FOLDER_KEY = 'ladsbattle_local_folder_v1';
 const SEARCH_FILTER_FIELDS = { dir: 'stella', card: 'card', partner: 'companion' };
 const SEARCH_FILTER_SIDES = { upper: 't1_', lower: 't2_' };
 const SEARCH_PARAM_KEYS = [
-  'orbit', 'level', 'companion', 'card', 'video',
+  'orbit', 'level', 'stars', 'companion', 'card', 'video',
   ...Object.values(SEARCH_FILTER_SIDES).flatMap(prefix =>
     Object.values(SEARCH_FILTER_FIELDS).map(field => prefix + field)
   )
@@ -108,6 +109,9 @@ function searchParamsForTab(tab) {
     params.set('orbit', ORBIT_LABEL[state.panel.orbit]);
     const layer = getExactLayerValue();
     if (layer !== null) params.set('level', String(layer));
+    if (state.panel.orbit === '波動' && layer !== null && state.panel.starFilter !== null) {
+      params.set('stars', String(state.panel.starFilter));
+    }
     for (const side of ['upper', 'lower']) {
       for (const filter of state.panel.layerFilters[side]) {
         params.set(SEARCH_FILTER_SIDES[side] + SEARCH_FILTER_FIELDS[filter.type], filter.type === 'dir' ? dirLabel(filter.value) : filter.value);
@@ -154,8 +158,9 @@ function parseSearchLink(params) {
   if (read('video') && !['0', '1'].includes(read('video'))) throw new Error('Invalid video filter');
   const companion = read('companion');
   const level = read('level');
+  const stars = read('stars');
   const hasOrbitFilters = Boolean(
-    read('orbit') || level
+    read('orbit') || level || stars
     || Object.values(SEARCH_FILTER_SIDES).some(prefix =>
       Object.values(SEARCH_FILTER_FIELDS).some(field => read(prefix + field)))
   );
@@ -186,6 +191,12 @@ function parseSearchLink(params) {
     next.committedOrbit = next.orbit;
     next.committedLayer = layer;
   }
+  if (stars) {
+    if (next.orbit !== '波動' || next.committedLayer === null || !/^[0-3]$/.test(stars)) {
+      throw new Error('Invalid star filter');
+    }
+    next.starFilter = Number(stars);
+  }
   for (const side of ['upper', 'lower']) {
     for (const [type, field] of Object.entries(SEARCH_FILTER_FIELDS)) {
       const value = read(SEARCH_FILTER_SIDES[side] + field);
@@ -212,6 +223,14 @@ function restoreSearchFromUrl() {
     tab = restored.tab;
     Object.assign(state[tab], restored.filters);
     if (tab === 'panel' && state.panel.committedLayer !== null) {
+      if (state.panel.starFilter !== null) {
+        const rows = getPanelAdvancedBaseData();
+        if (rows.length > 1 && getAvailableClearStars(rows).has(state.panel.starFilter)) {
+          state.panel.advancedFilterOpen = true;
+        } else {
+          state.panel.starFilter = null;
+        }
+      }
       const range = getLayerRanges().find(item => item.layers.includes(state.panel.committedLayer));
       state.panel.rangeKey = range?.key || null;
       state.panel.manualEntryOpen = !range;
@@ -452,11 +471,14 @@ function parseCSV(text) {
   const lines = text.trim().split(/\r?\n/);
   return lines.slice(1).map(line => {
     const cols = parseCsvLine(line);
+    const orbit = cols[0]?.trim();
+    const starsCell = cols[10]?.trim() ?? '';
     return {
-      orbit: cols[0]?.trim(), layer: parseInt(cols[1]),
+      orbit, layer: parseInt(cols[1]),
       upperCard: cols[2]?.trim(), upperPartner: cols[3]?.trim(), upperDir: cols[4]?.trim(),
       lowerCard: cols[5]?.trim(), lowerPartner: cols[6]?.trim(), lowerDir: cols[7]?.trim(),
-      hasVideo: cols[8]?.trim() === 'TRUE', link: cols[9]?.trim()
+      hasVideo: cols[8]?.trim() === 'TRUE', link: cols[9]?.trim(),
+      clearStars: orbit === '波動' && /^[0-3]$/.test(starsCell) ? Number(starsCell) : null
     };
   }).filter(d => !isNaN(d.layer));
 }
@@ -713,6 +735,7 @@ function getExactLayerValue() {
 function commitExactQuery(layer) {
   if (state.panel.committedOrbit !== state.panel.orbit || state.panel.committedLayer !== layer) {
     state.panel.layerFilters = { upper: [], lower: [] };
+    state.panel.starFilter = null;
   }
   state.panel.committedOrbit = state.panel.orbit;
   state.panel.committedLayer = layer;
@@ -730,6 +753,7 @@ function clearPanelAdvancedState({ collapse = true } = {}) {
   state.panel.dynamicBaseData = [];
   state.panel.dynamicFilterOrder = 0;
   state.panel.videoOnly = false;
+  state.panel.starFilter = null;
   if (collapse) state.panel.advancedFilterOpen = false;
   syncVideoFilterControls();
 }
@@ -860,7 +884,7 @@ function renderLayerSuggestions() {
   const visibleItems = activeRange ? activeRange.layers : ranges;
   const suggestionItems = !activeRange && state.panel.manualEntryOpen ? [] : visibleItems;
 
-  if (!state.panel.orbit || visibleItems.length === 0) {
+  if (!state.panel.orbit || (visibleItems.length === 0 && !state.panel.manualEntryOpen)) {
     panel.innerHTML = layerSuggestionPlaceholderMarkup(
       state.panel.orbit ? '此軌道暫無可選層數' : '請先選擇軌道類型',
       !state.panel.orbit
@@ -904,6 +928,30 @@ function renderLayerSuggestions() {
     </div>
   `;
   panel.classList.add('show');
+}
+
+function getAvailableClearStars(rows) {
+  return new Set(rows.map(row => row.clearStars).filter(count => count != null));
+}
+
+function renderPanelStarFilter(rows) {
+  const container = document.getElementById('panelStarFilter');
+  if (!container) return;
+  const available = state.panel.orbit === '波動' && rows.length > 1
+    ? getAvailableClearStars(rows) : new Set();
+  const focused = container.contains(document.activeElement) ? document.activeElement.dataset.clearStars : undefined;
+  container.innerHTML = available.size === 0 ? '' : `
+    <div class="star-filter">
+      <div class="orbit-label">通關星數</div>
+      <div class="star-filter-options layer-suggestion-track" role="group" aria-label="通關星數">
+        ${[0, 1, 2, 3].map(count => `
+          <button class="layer-suggestion-chip ui-pill ui-pill--secondary" type="button"
+            data-clear-stars="${count}" aria-label="${count} 星" aria-pressed="${state.panel.starFilter === count}"${available.has(count) ? '' : ' disabled'}>
+            ${clearStarsMarkup(count, { decorative: true })}
+          </button>`).join('')}
+      </div>
+    </div>`;
+  if (focused !== undefined) container.querySelector(`[data-clear-stars="${focused}"]`)?.focus({ preventScroll: true });
 }
 
 function blurLayerSuggestionFocus() {
@@ -1577,6 +1625,7 @@ function canUsePanelAdvancedFilters(baseData = getPanelAdvancedBaseData()) {
 function hasPanelAdvancedState() {
   return state.panel.advancedFilterOpen
     || state.panel.videoOnly
+    || state.panel.starFilter !== null
     || state.panel.layerFilters.upper.length > 0
     || state.panel.layerFilters.lower.length > 0;
 }
@@ -1625,6 +1674,7 @@ function applyFilters() {
   const advancedBaseData = layerNum === null ? [] : getBasePanelData(layerNum, false);
   const shouldShowAdvanced = canUsePanelAdvancedFilters(advancedBaseData);
   if (!shouldShowAdvanced && hasPanelAdvancedState()) clearPanelAdvancedState();
+  renderPanelStarFilter(advancedBaseData);
   const activeRange = layerNum === null && state.panel.rangeKey
     ? { start: Number(state.panel.rangeKey.split('-')[0]), end: Number(state.panel.rangeKey.split('-')[1]) }
     : null;
@@ -1639,7 +1689,9 @@ function applyFilters() {
     renderCards();
     return;
   }
-  const baseData = getBasePanelData(layerNum, videoOnly, activeRange);
+  const starFilter = state.panel.orbit === '波動' && layerNum !== null ? state.panel.starFilter : null;
+  const baseData = getBasePanelData(layerNum, videoOnly, activeRange)
+    .filter(row => starFilter === null || row.clearStars === starFilter);
   renderDynamicFilters(baseData, layerNum);
   state.panel.results = baseData.filter(d => matchesLayerFilters(d, 'upper') && matchesLayerFilters(d, 'lower'));
   const noMatch = document.getElementById('dynamicNoMatch');
@@ -1804,6 +1856,14 @@ function bindDelegatedInteractions() {
     layerSuggestionPanel.classList.remove('suppress-hover');
   });
 
+  document.getElementById('panelStarFilter')?.addEventListener('click', event => {
+    const button = event.target.closest('button[data-clear-stars]:enabled');
+    if (!button || appLoading) return;
+    const count = Number(button.dataset.clearStars);
+    state.panel.starFilter = state.panel.starFilter === count ? null : count;
+    applyFilters();
+  });
+
   document.getElementById('dynamicFilterPanel')?.addEventListener('click', event => {
     const button = event.target.closest('.dynamic-chip[data-side][data-type][data-value]');
     if (button) toggleDynamicFilter(button.dataset.side, button.dataset.type, button.dataset.value);
@@ -1848,10 +1908,44 @@ function hasPanelFilters() {
   );
 }
 
+function clearStarsMarkup(count, { decorative = false, label = '' } = {}) {
+  if (count == null) return '';
+  const stars = Array.from({ length: 3 }, (_, index) => `
+    <svg class="clear-star${index < count ? ' is-filled' : ''}" viewBox="0 0 24 24" aria-hidden="true">
+      <path class="clear-star-outline" d="M12 3l2.7 5.8 6.3.8-4.6 4.4 1.2 6.3-5.6-3.1-5.6 3.1 1.2-6.3L3 9.6l6.3-.8z"/>
+      ${index < count ? `
+        <path class="clear-star-highlight" d="M12 12L9.3 8.8 12 3ZM12 12L14.7 8.8 21 9.6ZM12 12L6.4 20.3 7.6 14Z"/>
+        <path class="clear-star-shadow" d="M12 12L21 9.6 16.4 14ZM12 12L17.6 20.3 12 17.2ZM12 12L3 9.6 9.3 8.8Z"/>` : ''}
+    </svg>`).join('');
+  const accessibility = decorative ? 'aria-hidden="true"' : `role="img" aria-label="通關星數 ${count}／3"`;
+  const labelMarkup = label ? `<span class="clear-stars-label" aria-hidden="true">${escapeHtml(label)}</span>` : '';
+  return `<span class="clear-stars" ${accessibility}>${labelMarkup}${stars}</span>`;
+}
+
+function getPanelCardLayers(d) {
+  const interval = d.orbit === '波動' ? 5 : 10;
+  const singleLayer = Number.isInteger(d.layer) && d.layer > 0 && d.layer % interval !== 0;
+  const layers = [
+    { label: '上層', card: d.upperCard, partner: d.upperPartner, dir: d.upperDir },
+    { label: '下層', card: d.lowerCard, partner: d.lowerPartner, dir: d.lowerDir }
+  ];
+  const missing = layer => !layer.card || layer.card === 'N/A';
+  const partial = !singleLayer && layers.filter(missing).length === 1;
+
+  // Some single-layer records may store their only configuration in the lower columns.
+  if (singleLayer && missing(layers[0]) && !missing(layers[1])) layers.reverse();
+  if (singleLayer) layers[0].label = '單層';
+  for (const layer of layers) {
+    if (missing(layer)) layer.emptyMessage = partial ? '僅提供單層配置' : '無此層配置';
+  }
+  return { singleLayer, layers };
+}
+
 function panelCardMarkup(d, { resultIndex = null, previewType = '', previewIndex = null } = {}) {
   const folderItem = panelFolderItem(d);
   const orbit = escapeHtml(d.orbit);
   const orbitLabel = escapeHtml(ORBIT_LABEL[d.orbit] || d.orbit);
+  const { singleLayer, layers } = getPanelCardLayers(d);
   const previewAttrs = previewType ? ` data-preview-type="${previewType}" data-preview-index="${previewIndex}"` : '';
   const resultAttrs = Number.isInteger(resultIndex)
     ? ` data-result-type="panel" data-result-index="${resultIndex}" role="button" tabindex="0"`
@@ -1862,12 +1956,14 @@ function panelCardMarkup(d, { resultIndex = null, previewType = '', previewIndex
       <div class="card-orbit-bar">
         <div class="card-labels panel-card-title">
           <span class="orbit-badge" data-orbit="${orbit}">${orbitLabel}</span>
-          <span class="layer-num">${escapeHtml(String(d.layer))} 層</span>
+          <span class="panel-card-level">
+            <span class="layer-num">${escapeHtml(String(d.layer))} 層</span>
+            ${d.orbit === '波動' ? clearStarsMarkup(d.clearStars, { label: '星數' }) : ''}
+          </span>
         </div>
       </div>
-      <div class="layer-section">
-        ${cardLayerBlock(d.upperCard, d.upperPartner, d.upperDir, '▲ 上層')}
-        ${cardLayerBlock(d.lowerCard, d.lowerPartner, d.lowerDir, '▼ 下層')}
+      <div class="layer-section${singleLayer ? ' is-single-layer' : ''}">
+        ${layers.map(cardLayerBlock).join('')}
       </div>
       <div class="card-footer">
         ${d.hasVideo ? videoBadgeMarkup() : '<span></span>'}
@@ -1997,14 +2093,16 @@ function setupPreviewScroll(selector, itemCount) {
   });
 }
 
-function cardLayerBlock(card, partner, dir, label) {
-  if (card === 'N/A') return `<div class="layer-block layer-block-empty">
+function cardLayerBlock({ card, partner, dir, label, emptyMessage }) {
+  const marker = { 上層: '▲', 下層: '▼', 單層: '◆' }[label];
+  const heading = `${marker} ${label}`;
+  if (emptyMessage) return `<div class="layer-block layer-block-empty">
     <div class="layer-head">
-      <div class="layer-label">${escapeHtml(label)}</div>
+      <div class="layer-label">${escapeHtml(heading)}</div>
       <span class="dir-tag dir-placeholder" aria-hidden="true">順譜</span>
     </div>
     <div class="layer-data-grid layer-data-grid-empty">
-      <div class="layer-data-cell layer-data-empty"><div class="na-text">單層面板</div></div>
+      <div class="layer-data-cell layer-data-empty"><div class="na-text">${escapeHtml(emptyMessage)}</div></div>
     </div>
   </div>`;
   const safeDir = dir === '順' || dir === '逆' ? dir : '';
@@ -2013,7 +2111,7 @@ function cardLayerBlock(card, partner, dir, label) {
     : '';
   return `<div class="layer-block">
     <div class="layer-head">
-      <div class="layer-label">${escapeHtml(label)}</div>
+      <div class="layer-label">${escapeHtml(heading)}</div>
       ${dirHtml}
     </div>
     <div class="layer-data-grid">
@@ -2117,9 +2215,9 @@ function modalDirBadgeMarkup(dir, hidden = false) {
   return `<span class="modal-config-dir dir-na${hiddenClass}"${hiddenAttr}>—</span>`;
 }
 
-function modalConfigRow(label, card, partner, dir) {
-  if (card === 'N/A') {
-    const markerClass = label === '上層' ? 'is-upper' : 'is-lower';
+function modalConfigRow({ label, card, partner, dir, emptyMessage }) {
+  const markerClass = { 上層: 'is-upper', 下層: 'is-lower', 單層: 'is-single' }[label];
+  if (emptyMessage) {
     return `<div class="modal-config-section modal-config-section-empty">
       <span class="modal-config-marker ${markerClass}" aria-hidden="true"></span>
       <div class="modal-config-layer-row">
@@ -2128,17 +2226,16 @@ function modalConfigRow(label, card, partner, dir) {
       </div>
       <div class="modal-config-fields modal-config-fields-empty">
         <div class="modal-config-field modal-config-field-empty">
-          <div class="modal-config-main modal-config-muted">無此層配置</div>
+          <div class="modal-config-main modal-config-muted">${escapeHtml(emptyMessage)}</div>
         </div>
       </div>
     </div>`;
   }
-  const markerClass = label === '上層' ? 'is-upper' : 'is-lower';
   return `<div class="modal-config-section">
     <span class="modal-config-marker ${markerClass}" aria-hidden="true"></span>
     <div class="modal-config-layer-row">
       ${modalLayerTitleMarkup(label)}
-      ${modalDirBadgeMarkup(dir)}
+      ${dir === '順' || dir === '逆' ? modalDirBadgeMarkup(dir) : modalDirBadgeMarkup('順', true)}
     </div>
     <div class="modal-config-fields">
       <div class="modal-config-field">
@@ -2154,9 +2251,9 @@ function modalConfigRow(label, card, partner, dir) {
 }
 
 function modalConfigTable(d) {
-  return `<div class="modal-config-detail">
-    ${modalConfigRow('上層', d.upperCard, d.upperPartner, d.upperDir)}
-    ${modalConfigRow('下層', d.lowerCard, d.lowerPartner, d.lowerDir)}
+  const { singleLayer, layers } = getPanelCardLayers(d);
+  return `<div class="modal-config-detail${singleLayer ? ' is-single-layer' : ''}">
+    ${layers.map(modalConfigRow).join('')}
   </div>`;
 }
 
@@ -2172,7 +2269,9 @@ function openPanelDetail(d, recordHistory = true) {
   modalEl.classList.remove('endless-detail');
   modalEl.dataset.orbit = d.orbit;
 
-  document.getElementById('mOrbit').innerHTML = `<span class="orbit-badge" data-orbit="${escapeHtml(d.orbit)}">${escapeHtml(ORBIT_LABEL[d.orbit] || d.orbit)}</span>`;
+  document.getElementById('mOrbit').innerHTML = `
+    <span class="orbit-badge" data-orbit="${escapeHtml(d.orbit)}">${escapeHtml(ORBIT_LABEL[d.orbit] || d.orbit)}</span>
+    ${d.orbit === '波動' ? clearStarsMarkup(d.clearStars, { label: '通關星數' }) : ''}`;
   document.getElementById('mLayer').innerHTML = `<span class="modal-layer-num">${escapeHtml(String(d.layer))}</span><span class="modal-layer-unit">層</span>`;
   const orbitColors = {
     開放: 'var(--col-open)', 光: 'var(--col-light)', 冰: 'var(--col-ice)',

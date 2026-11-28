@@ -46,7 +46,10 @@
   --col-fire:   #f5a3cf; --col-fire-bg:   rgba(245,163,207,0.13); --col-fire-border:   rgba(245,163,207,0.4);
   --col-energy: #ff7f87; --col-energy-bg: rgba(255,127,135,0.13); --col-energy-border: rgba(255,127,135,0.4);
   --col-gravity:#ffb47a; --col-gravity-bg:rgba(255,180,122,0.13); --col-gravity-border:rgba(255,180,122,0.4);
-  --col-wave:   #ffe07a; --col-wave-bg:   rgba(232,200,74,0.13);   --col-wave-border:   rgba(232,200,74,0.4);
+  --col-wave-rgb: 255, 232, 153;
+  --col-wave: rgb(var(--col-wave-rgb));
+  --col-wave-bg: rgba(var(--col-wave-rgb), 0.13);
+  --col-wave-border: rgba(var(--col-wave-rgb), 0.4);
   --col-metal:  #49c3d2; --col-metal-bg:  rgba(73,195,210,0.13);  --col-metal-border:  rgba(73,195,210,0.4);
 }
 
@@ -684,6 +687,16 @@ body:has(.contributors-modal[open]) { overflow: hidden; }
   gap: 0.45rem;
   padding: 0.05rem 0 0.15rem;
 }
+.star-filter {
+  margin-top: 0.8rem;
+}
+.star-filter-options .layer-suggestion-chip {
+  min-width: 0;
+  padding-inline: 0.65rem;
+}
+.star-filter-options .clear-stars {
+  flex-shrink: 0;
+}
 .layer-suggestion-placeholder {
   position: relative;
   min-height: var(--primary-filter-placeholder-height);
@@ -768,7 +781,7 @@ body:has(.contributors-modal[open]) { overflow: hidden; }
 .layer-manual-return {
   flex: 0 0 auto;
 }
-.layer-suggestion-panel:not(.suppress-hover) .layer-suggestion-chip:hover {
+:is(.layer-suggestion-panel:not(.suppress-hover), .star-filter-options) .layer-suggestion-chip:enabled:hover {
   border-color: rgba(188,212,255,0.52);
   color: var(--text);
   background: rgba(160,190,240,0.12);
@@ -1310,6 +1323,48 @@ body.is-app-loading .primary-filter-block select {
 .orbit-badge[data-orbit="波動"]  { color: var(--col-wave);   border-color: var(--col-wave-border);   background: var(--col-wave-bg); }
 .orbit-badge[data-orbit="金屬"]  { color: var(--col-metal);  border-color: var(--col-metal-border);  background: var(--col-metal-bg); }
 
+.panel-card-level,
+.clear-stars {
+  display: inline-flex;
+  align-items: center;
+}
+.panel-card-level {
+  gap: 0.48rem;
+  white-space: nowrap;
+}
+.clear-stars {
+  gap: 0.14rem;
+  color: #fff0bd;
+}
+.clear-stars-label {
+  margin-inline-end: 0.2rem;
+  color: var(--text-muted);
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 0.68rem;
+  font-weight: 400;
+  white-space: nowrap;
+}
+.clear-star {
+  width: 0.85rem;
+  height: 0.85rem;
+  transform: rotate(20deg);
+}
+.clear-star-outline {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  opacity: 0.45;
+}
+.clear-star.is-filled .clear-star-outline {
+  fill: currentColor;
+  stroke: #e7ca86;
+  stroke-width: 0.9;
+  opacity: 1;
+}
+.clear-star-highlight { fill: #fffbee; }
+.clear-star-shadow { fill: #d6b36c; }
+
 .layer-num {
   display: inline-flex;
   align-items: center;
@@ -1334,6 +1389,12 @@ body.is-app-loading .primary-filter-block select {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+}
+
+/* Preserve the second row's footprint so the card footer stays in place. */
+.layer-section.is-single-layer > .layer-block:last-child,
+.modal-config-detail.is-single-layer > .modal-config-section:last-child {
+  visibility: hidden;
 }
 
 .layer-block {
@@ -1759,6 +1820,9 @@ body.is-app-loading .primary-filter-block select {
 
 .modal.panel-detail .modal-orbit {
   margin-bottom: 0.6rem;
+  max-width: 100%;
+  flex-wrap: wrap-reverse;
+  row-gap: 0.45rem;
 }
 
 .modal.panel-detail .modal-layer {
@@ -1785,6 +1849,18 @@ body.is-app-loading .primary-filter-block select {
   .modal.panel-detail .modal-layer {
     justify-content: flex-start;
   }
+}
+
+.modal.panel-detail .modal-orbit .clear-stars {
+  flex-shrink: 0;
+}
+.modal.panel-detail .clear-stars-label {
+  font-size: 0.75rem;
+}
+
+.modal.panel-detail .modal-orbit .clear-star {
+  width: 1.05rem;
+  height: 1.05rem;
 }
 
 .modal-layer-num {
@@ -1868,6 +1944,11 @@ body.is-app-loading .primary-filter-block select {
 
 .modal-config-marker.is-lower {
   clip-path: polygon(0 0, 100% 0, 50% 100%);
+  background: currentColor;
+}
+
+.modal-config-marker.is-single {
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
   background: currentColor;
 }
 

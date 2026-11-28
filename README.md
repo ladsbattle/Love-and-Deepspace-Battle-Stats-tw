@@ -25,8 +25,12 @@ The parser reads columns by position rather than by header name. Include one hea
 ### Orbit
 
 ```text
-Orbit → Level → Upper Card → Upper Companion → Upper Stella → Lower Card → Lower Companion → Lower Stella → Has Video → Link
+Orbit → Level → Upper Card → Upper Companion → Upper Stella → Lower Card → Lower Companion → Lower Stella → Has Video → Link → 星數
 ```
+
+- **Level configuration:** In Fluctuation Orbit (開放波動), levels that are multiples of 5 have both an upper and a lower configuration. In other Orbits, this applies to levels that are multiples of 10. All remaining levels have a single configuration.
+- **Partial records:** If only one configuration is submitted for a level that has both, enter it in the corresponding Upper or Lower columns. Leave the missing configuration's fields blank or mark its Card as `N/A`.
+- **Clear stars (column K, `星數`):** For new Fluctuation Orbit records, enter the confirmed clear rating as a number from `0` to `3`. Use `0` only for a confirmed zero-star clear. Leave unknown ratings and all other Orbits blank. Keep this column immediately after `Link`.
 
 ### Endless Challenge
 
